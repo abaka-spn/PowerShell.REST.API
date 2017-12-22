@@ -21,7 +21,7 @@ namespace DynamicPowerShellApi
 			string filename,
 			string snapin,
 			string module,
-			IList<KeyValuePair<string, string>> parametersList,
+			IList<KeyValuePair<string, object>> parametersList,
 			bool asJob);
 	}
 }

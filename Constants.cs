@@ -1,4 +1,6 @@
-﻿namespace DynamicPowerShellApi
+﻿using DynamicPowerShellApi.Configuration;
+
+namespace DynamicPowerShellApi
 {
 	/// <summary>	A constants helper class. </summary>
 	public static class Constants
@@ -13,5 +15,12 @@
 
 		/// <summary>	Full URI of the get job file. </summary>
 		public const string GetJobPath = "/api/server/job";
-	}
+
+        /// <summary>	Default location of undefined parameters in config file. </summary>
+        public const RestLocation DefaultParameterLocation = RestLocation.Body;
+
+        /// <summary>	Default RET Method of undefined parameters in config file. </summary>
+        public const RestMethod DefaultRestMethod = RestMethod.Get;
+
+    }
 }

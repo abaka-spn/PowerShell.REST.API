@@ -53,7 +53,7 @@
 				Level = EventLevel.Informational
 			)
 		]
-		public void StartUp()
+		public void ApiStart()
 		{
 			WriteEvent(Events.ApiStartup);
 		}
@@ -68,7 +68,7 @@
 				Level = EventLevel.Informational
 			)
 		]
-		public void Stop()
+		public void ApiStop()
 		{
 			WriteEvent(Events.ApiStop);
 		}
