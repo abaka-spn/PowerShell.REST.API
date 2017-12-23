@@ -61,13 +61,19 @@ namespace DynamicPowerShellApi
                     }
             };
 
-            if (Configuration.ApiConfig.AppCommands.Count > 0)
+            List<PSCommand> AppCommands = WebApiConfiguration.Instance
+                .Apis.ToList()
+                .SelectMany(x => x.WebMethods)
+                .Select(x => x.ApiCommand)
+                .ToList();
+
+            if (AppCommands.Count > 0)
             {
                 openApiDocument.Paths = new OpenApiPaths();
 
-                foreach (var apiCmd in Configuration.ApiConfig.AppCommands.Values)
+                foreach (var apiCmd in AppCommands)
                 {
-                    string routePath = apiCmd.GetRoutePath();
+                    string routePath = apiCmd.GetRoutePath("/api");
                     OperationType operationType = (OperationType)apiCmd.RestMethod;
 
                     if (openApiDocument.Paths.Where(x => x.Key == routePath).Count() == 0)
@@ -103,7 +109,7 @@ namespace DynamicPowerShellApi
 
                         // all Parameters, except by body
                         var openApiNotBodyParameters = new List<OpenApiParameter>();
-                        foreach (var apiParameter in apiCmd.Parameters.Values.Where(x => x.Location != RestParameterLocation.Body))
+                        foreach (var apiParameter in apiCmd.Parameters.Where(x => x.Location != RestLocation.Body))
                         {
                             openApiNotBodyParameters.Add
                             (
@@ -126,7 +132,7 @@ namespace DynamicPowerShellApi
                         // all body parameters
                         var openApiBodyProperties = new Dictionary<string, OpenApiSchema>();
                         bool required = false;
-                        foreach (var apiParameter in apiCmd.Parameters.Values.Where(x => x.Location == RestParameterLocation.Body))
+                        foreach (var apiParameter in apiCmd.Parameters.Where(x => x.Location == RestLocation.Body))
                         {
                             openApiBodyProperties.Add
                             (

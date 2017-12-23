@@ -38,7 +38,7 @@ namespace DynamicPowerShellApi
 			string filename, 
 			string snapin, 
 			string module, 
-			IList<KeyValuePair<string, string>> parametersList,
+			IList<KeyValuePair<string, object>> parametersList,
 			bool asJob)
 		{
 			if (string.IsNullOrWhiteSpace(filename))
@@ -51,7 +51,7 @@ namespace DynamicPowerShellApi
 			{
 				var sb = new StringBuilder();
 
-				foreach (KeyValuePair<string, string> kvp in parametersList)
+				foreach (KeyValuePair<string, object> kvp in parametersList)
 				{
 					if (sb.Length > 0)
 						sb.Append(";");

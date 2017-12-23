@@ -36,7 +36,6 @@ namespace DynamicPowerShellApi.Configuration
 			}
 		}
 
-<<<<<<< HEAD
         /// <summary>
         /// Gets the parameter type.
         /// </summary>
@@ -221,9 +220,8 @@ namespace DynamicPowerShellApi.Configuration
 
         }
         */
-    }
-=======
-		/// <summary>
+ 
+    /// <summary>
 		/// Determines whether the parameter is optional.
 		/// </summary>
 		[ConfigurationProperty("IsOptional", DefaultValue = false)]
@@ -240,5 +238,4 @@ namespace DynamicPowerShellApi.Configuration
 		/// </summary>
 		public bool IsRequired => !IsOptional;
 	}
->>>>>>> eca6f8908ee81eda08a82e1e9906761402f51d97
 }

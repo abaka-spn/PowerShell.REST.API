@@ -1,7 +1,7 @@
 <instrumentationManifest xmlns="http://schemas.microsoft.com/win/2004/08/events">
  <instrumentation xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:win="http://manifests.microsoft.com/win/2004/08/windows/events">
   <events xmlns="http://schemas.microsoft.com/win/2004/08/events">
-<provider name="DDCloud-DynamicPowershellApi" guid="{2fb1cbdf-1b23-571e-203c-a2c9ded93a89}" resourceFileName="C:\Users\jasbro\Source\repos\forked\PowerShell.REST.API\ETW\DynamicPowerShellApi.DDCloud-DynamicPowershellApi.etwManifest.dll" messageFileName="C:\Users\jasbro\Source\repos\forked\PowerShell.REST.API\ETW\DynamicPowerShellApi.DDCloud-DynamicPowershellApi.etwManifest.dll" symbol="DDCloudDynamicPowershellApi">
+<provider name="DDCloud-DynamicPowershellApi" guid="{2fb1cbdf-1b23-571e-203c-a2c9ded93a89}" resourceFileName="C:\SeB\VS2017\Projects\PowerShell.REST.API-Abaka\ETW\DynamicPowerShellApi.DDCloud-DynamicPowershellApi.etwManifest.dll" messageFileName="C:\SeB\VS2017\Projects\PowerShell.REST.API-Abaka\ETW\DynamicPowerShellApi.DDCloud-DynamicPowershellApi.etwManifest.dll" symbol="DDCloudDynamicPowershellApi">
  <tasks>
   <task name="ModuleException" message="$(string.task_ModuleException)" value="64521"/>
   <task name="LoadingModule" message="$(string.task_LoadingModule)" value="64522"/>
@@ -9,8 +9,8 @@
   <task name="PowerShellError" message="$(string.task_PowerShellError)" value="64524"/>
   <task name="VerboseMessaging" message="$(string.task_VerboseMessaging)" value="64526"/>
   <task name="PowerShellScriptFinalised" message="$(string.task_PowerShellScriptFinalised)" value="64527"/>
-  <task name="Stop" message="$(string.task_Stop)" value="64528"/>
-  <task name="StartUp" message="$(string.task_StartUp)" value="64529"/>
+  <task name="ApiStop" message="$(string.task_ApiStop)" value="64528"/>
+  <task name="ApiStart" message="$(string.task_ApiStart)" value="64529"/>
   <task name="ConfigurationError" message="$(string.task_ConfigurationError)" value="64530"/>
   <task name="UnhandledException" message="$(string.task_UnhandledException)" value="64531"/>
   <task name="SnapinException" message="$(string.task_SnapinException)" value="64532"/>
@@ -26,8 +26,8 @@
   <keyword name="Session0" message="$(string.keyword_Session0)" mask="0x800000000000"/>
  </keywords>
  <events>
-  <event value="1005" version="0" level="win:Informational" symbol="StartUp" message="$(string.event_StartUp)" task="StartUp"/>
-  <event value="1006" version="0" level="win:Informational" symbol="Stop" message="$(string.event_Stop)" task="Stop"/>
+  <event value="1005" version="0" level="win:Informational" symbol="ApiStart" message="$(string.event_ApiStart)" task="ApiStart"/>
+  <event value="1006" version="0" level="win:Informational" symbol="ApiStop" message="$(string.event_ApiStop)" task="ApiStop"/>
   <event value="1000" version="0" level="win:Informational" symbol="ReceivedRequest" message="$(string.event_ReceivedRequest)" task="ReceivedRequest" template="ReceivedRequestArgs"/>
   <event value="1007" version="0" level="win:Verbose" symbol="PowerShellScriptFinalised" message="$(string.event_PowerShellScriptFinalised)" task="PowerShellScriptFinalised" template="PowerShellScriptFinalisedArgs"/>
   <event value="1001" version="0" level="win:Informational" symbol="ExecutingPowerShellScript" message="$(string.event_ExecutingPowerShellScript)" task="ExecutingPowerShellScript" template="ExecutingPowerShellScriptArgs"/>
@@ -84,8 +84,10 @@
 </events>
 </instrumentation>
 <localization>
- <resources culture="en-GB">
+ <resources culture="fr-FR">
   <stringTable>
+   <string id="event_ApiStart" value="Started API"/>
+   <string id="event_ApiStop" value="Stopped API"/>
    <string id="event_ConfigurationError" value="Cannot start service from configuration error-  %1"/>
    <string id="event_ExecutingPowerShellScript" value="Started execution of powershell script file %1 - %2"/>
    <string id="event_InvalidPowerShellOutput" value="Invalid PowerShell Output %1"/>
@@ -95,14 +97,14 @@
    <string id="event_PowerShellScriptFinalised" value="Stopped execution of powershell %1"/>
    <string id="event_ReceivedRequest" value="Received request: %1"/>
    <string id="event_SnapinException" value="Snapin Exception Raised %1"/>
-   <string id="event_StartUp" value="Started API"/>
-   <string id="event_Stop" value="Stopped API"/>
    <string id="event_UnhandledException" value="Unhandled exception in service %1, stack %2"/>
    <string id="event_VerboseMessaging" value="Verbose Message - %1"/>
    <string id="keyword_Session0" value="Session0"/>
    <string id="keyword_Session1" value="Session1"/>
    <string id="keyword_Session2" value="Session2"/>
    <string id="keyword_Session3" value="Session3"/>
+   <string id="task_ApiStart" value="ApiStart"/>
+   <string id="task_ApiStop" value="ApiStop"/>
    <string id="task_ConfigurationError" value="ConfigurationError"/>
    <string id="task_ExecutingPowerShellScript" value="ExecutingPowerShellScript"/>
    <string id="task_InvalidPowerShellOutput" value="InvalidPowerShellOutput"/>
@@ -112,8 +114,6 @@
    <string id="task_PowerShellScriptFinalised" value="PowerShellScriptFinalised"/>
    <string id="task_ReceivedRequest" value="ReceivedRequest"/>
    <string id="task_SnapinException" value="SnapinException"/>
-   <string id="task_StartUp" value="StartUp"/>
-   <string id="task_Stop" value="Stop"/>
    <string id="task_UnhandledException" value="UnhandledException"/>
    <string id="task_VerboseMessaging" value="VerboseMessaging"/>
   </stringTable>

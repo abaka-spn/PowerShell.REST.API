@@ -100,7 +100,7 @@ namespace DynamicPowerShellApi.Host
 			try
 			{
 				// Raise a start service
-				DynamicPowershellApiEvents.Raise.StartUp();
+				DynamicPowershellApiEvents.Raise.ApiStart();
 
 				Startup.Start();
 			}
@@ -133,7 +133,7 @@ namespace DynamicPowerShellApi.Host
 			Console.ReadLine();
 
 			// Raise a stop service
-			DynamicPowershellApiEvents.Raise.Stop();
+			DynamicPowershellApiEvents.Raise.ApiStop();
 
 			return 0;
 		}
@@ -149,7 +149,7 @@ namespace DynamicPowerShellApi.Host
 			try
 			{
 				// Raise a start service
-				DynamicPowershellApiEvents.Raise.StartUp();
+				DynamicPowershellApiEvents.Raise.ApiStart();
 
 				ServiceBase.Run(new DynamicPowerShellApiService());
 			}
