@@ -21,11 +21,14 @@ namespace DynamicPowerShellApi.Owin
 	using System.Web.Http;
 	using System.Web.Http.Controllers;
 	using System.Web.Http.Dispatcher;
+    using Microsoft.Owin.StaticFiles;
+    using Microsoft.Owin.FileSystems;
+    using Microsoft.Owin;
 
-	/// <summary>
-	/// The startup.
-	/// </summary>
-	public class Startup
+    /// <summary>
+    /// The startup.
+    /// </summary>
+    public class Startup
 	{
 		/// <summary>
 		/// This code configures Web API. The Startup class is specified as a type
@@ -68,9 +71,32 @@ namespace DynamicPowerShellApi.Owin
 		            });
 		    }
 
-			appBuilder.UseAutofacMiddleware(container);
-		    appBuilder.UseWebApi(config);
-			appBuilder.UseAutofacWebApi(config);
+            var options = new FileServerOptions
+            {
+                RequestPath = new PathString("/help"),
+                EnableDirectoryBrowsing = false,
+                EnableDefaultFiles = true,
+                DefaultFilesOptions = { DefaultFileNames = { "index.html" } },
+                FileSystem = new PhysicalFileSystem("Swagger-UI")
+            };
+
+
+            appBuilder.UseAutofacMiddleware(container);
+    	    appBuilder.UseWebApi(config);
+/*
+ * TO DO : Change the content of index.html to customize the Openapi specification URL 
+            appBuilder.Map("/help", spa =>
+            {
+                spa.Use((context, next) =>
+                {
+                    context.Request.Path = new PathString("/Swagger-UI/index.html");
+                    return next();
+                });
+                spa.UseStaticFiles();
+            });
+*/ 
+            appBuilder.UseFileServer(options);
+            appBuilder.UseAutofacWebApi(config);
 		}
 
 		/// <summary>
@@ -115,12 +141,28 @@ namespace DynamicPowerShellApi.Owin
 			config.Services.Replace(typeof(IHttpControllerSelector), new GenericControllerSelector(config));
 			config.Services.Replace(typeof(IHttpActionSelector), new GenericActionSelector(config));
 
-			config.Routes.MapHttpRoute(
-				name: "DefaultApi",
-				routeTemplate: "api/{controller}/{action}",
-				defaults: new { category = "all", id = RouteParameter.Optional });
+            config.MapHttpAttributeRoutes();
 
-			return config;
+            /*
+            config.Routes.MapHttpRoute(
+				name: "DefaultApi",
+				routeTemplate: "api/{controller}/{action}/{id1}/{id2}/{id3}",
+				defaults: new { category = "all",
+                                id1 = RouteParameter.Optional,
+                                id2 = RouteParameter.Optional,
+                                id3 = RouteParameter.Optional
+                });
+                */
+            /*
+            config.Routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
+
+            config.Routes.MapRoute(
+                name: "Default",
+                url: "{controller}/{action}/{id}",
+                defaults: new { controller = "Home", action = "Index", id = UrlParameter.Optional }
+*/
+
+            return config;
 		}
 
 		/// <summary>
@@ -131,6 +173,10 @@ namespace DynamicPowerShellApi.Owin
 		/// </returns>
 		public static IDisposable Start()
 		{
+
+            WebApiConfiguration.LoadPSCommands();
+
+
 			Uri baseAddress = WebApiConfiguration.Instance.HostAddress;
 
 			// Start OWIN host 

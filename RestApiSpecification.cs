@@ -44,9 +44,7 @@ namespace DynamicPowerShellApi
 
             outputStringWriter.Flush();
             return outputStringWriter.GetStringBuilder().ToString();
-        }
-
-        public static OpenApiDocument BuildSpecification()
+        }        public static OpenApiDocument BuildSpecification()
         {
             var openApiDocument = new OpenApiDocument
             {
@@ -57,7 +55,7 @@ namespace DynamicPowerShellApi
                 },
                 Servers = new List<OpenApiServer>
                     {
-                        new OpenApiServer { Url = "http://localhost:9000/api" }
+                        new OpenApiServer { Url = WebApiConfiguration.Instance.HostAddress.ToString() }
                     }
             };
 
@@ -92,7 +90,13 @@ namespace DynamicPowerShellApi
                                 {
                                     ["200"] = new OpenApiResponse
                                     {
-                                        Description = "OK"
+                                        Description = "OK",
+                                        Content = new Dictionary<string, OpenApiMediaType>()
+                                        {
+                                            {
+                                                "application/json", new OpenApiMediaType()
+                                            }
+                                        }
                                     }
                                 },
                                 RequestBody = new OpenApiRequestBody

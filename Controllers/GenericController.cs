@@ -17,12 +17,14 @@ namespace DynamicPowerShellApi.Controllers
     using System.Linq;
     using System.Net;
     using System.Net.Http;
+    using System.Text;
     using System.Threading.Tasks;
     using System.Web.Http;
 
     /// <summary>
     /// Generic controller for running PowerShell commands.
     /// </summary>
+    [Route("api/{*url}")]
     public class GenericController : ApiController
     {
         /// <summary>
@@ -57,6 +59,30 @@ namespace DynamicPowerShellApi.Controllers
             _powershellRunner = powershellRunner ?? throw new ArgumentNullException("powershellRunner");
             _crashLogger = crashLogger ?? throw new ArgumentNullException("crashLogger");
             _jobListProvider = jobListProvider ?? throw new ArgumentNullException("jobListProvider");
+        }
+
+        /// <summary>
+        /// Get a openapi specification
+        /// </summary>
+        /// <returns>openapi specification</returns>
+        [Route("spec")]
+        [AllowAnonymous]
+        public HttpResponseMessage GetApiSpecification()
+        {
+            string spec = "";
+
+            var queryStringParams = Request.GetQueryNameValuePairs().ToList();
+            var param1 = queryStringParams.FirstOrDefault(kv => kv.Key.Equals("openapi",StringComparison.CurrentCultureIgnoreCase)).Value;
+
+            if (param1 == "2.0")
+            {
+                spec = RestApiSpecification.GetSpecAsV2();
+            }
+            else
+            {
+                spec = RestApiSpecification.GetSpecAsV3();
+            }            
+            return new HttpResponseMessage { Content = new StringContent(spec) };
         }
 
         /// <summary>
@@ -170,75 +196,93 @@ namespace DynamicPowerShellApi.Controllers
             var inParams = new List<KeyValuePair<string, object>>();
             List<PSParameter> allowedParams;
 
-            // ----- Body parameters -----
+            #region ----- Body parameters -----
             allowedParams = method.ApiCommand.GetParametersByLocation(RestLocation.Body);
 
             string documentContents = await Request.Content.ReadAsStringAsync();
-            // If only one parameter is defined in parameter file, not name needed 
-            if (allowedParams.Count() == 1)
-            {
-                if (documentContents.StartsWith("["))
-                {
-                    JArray tokenArray = JArray.Parse(documentContents);
-                    inParams.Add(new KeyValuePair<string, object>(allowedParams.First().Name, tokenArray));
-                }
-                else
-                {
-                    JObject obj = JObject.Parse(documentContents);
-                    inParams.Add(new KeyValuePair<string, object>(allowedParams.First().Name, obj));
-                }
-            }
-            else
-            {
-                if (documentContents.StartsWith("[")) // if more one parameter are defined in config file, array is not allow 
-                {
-                    DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Body cannot be a json array."));
-                    throw new MissingParametersException("Body cannot be a json array.");
-                }
-                else  // it's an object. Let's just treat it as an object
-                {
-                    JObject obj = JObject.Parse(documentContents);
-                    foreach (var details in obj)
-                    {
-                        var name = details.Key;
-                        var value = details.Value; //.ToString();
+            documentContents = documentContents.ToString().Trim();
 
-                        if (allowedParams.FirstOrDefault(x => x.Name == name) != null)
+            if (!string.IsNullOrWhiteSpace(documentContents))
+            {
+                // If only one parameter is defined in parameter file, not name needed 
+                if (allowedParams.Count == 1)
+                {
+                    if (documentContents.StartsWith("["))
+                    {
+                        JArray tokenArray = JArray.Parse(documentContents);
+                        Object value = JsonHelper.Convert(tokenArray);
+                        inParams.Add(new KeyValuePair<string, object>(allowedParams.First().Name, value));
+                    }
+                    else if (documentContents.StartsWith("{"))
+                    {
+                        JObject obj = JObject.Parse(documentContents);
+                        Object value = JsonHelper.Convert(obj);
+                        inParams.Add(new KeyValuePair<string, object>(allowedParams.First().Name, value));
+                    }
+                    else
+                    {
+                        inParams.Add(new KeyValuePair<string, object>(allowedParams.First().Name, documentContents));
+                    }
+                }
+                else if(allowedParams.Count > 1)
+                {
+                    if (documentContents.StartsWith("[")) // if more one parameter are defined in config file, array is not allow 
+                    {
+                        DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Body cannot be a json array."));
+                        throw new MissingParametersException("Body cannot be a json array.");
+                    }
+                    else if(documentContents.StartsWith("{"))  // it's an object. Let's just treat it as an object
+                    {
+                        JObject obj = JObject.Parse(documentContents);
+
+                        foreach (var detail in obj)
                         {
-                            inParams.Add(new KeyValuePair<string, object>(name, value));
+                            String name = detail.Key;
+                            Object value = JsonHelper.Convert(detail.Value);
+
+                            if (allowedParams.FirstOrDefault(x => x.Name.Equals(name,StringComparison.CurrentCultureIgnoreCase)) != null)
+                            {
+                                inParams.Add(new KeyValuePair<string, object>(name, value));
+                            }
+                            else
+                            {
+                                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Parameter {0} is not allow in body.", name));
+                                throw new MissingParametersException(String.Format("Parameter {0} is not allow in body.", name));
+                            }
                         }
-                        else
-                        {
-                            DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Parameter {0} is not allow in body.", name));
-                            throw new MissingParametersException(String.Format("Parameter {0} is not allow in body.", name));
-                        }
+                    }
+                    else
+                    {
+                        DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Boby must be a json object with {0} properties.",allowedParams.Count));
+                        throw new MissingParametersException(String.Format("Boby must be a json object with {0} properties.", allowedParams.Count));
                     }
                 }
             }
+            #endregion
 
-            // ----- QueryString parameters -----method.GetParametersByLocation
+            #region ----- QueryString parameters -----
             allowedParams = method.ApiCommand.GetParametersByLocation(RestLocation.Query);
 
             foreach (var details in Request.GetQueryNameValuePairs())
             {
-                var name = details.Key;
-                var value = details.Value; //.ToString();
+                var param = allowedParams.FirstOrDefault(x => x.Name.Equals(details.Key, StringComparison.CurrentCultureIgnoreCase));
 
-                if (allowedParams.FirstOrDefault(x => x.Name == name) != null)
+                if (param != null)
                 {
-                    inParams.Add(new KeyValuePair<string, object>(name, value));
+                    inParams.Add(new KeyValuePair<string, object>(param.Name, details.Value));
                 }
                 else
                 {
-                    DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Parameter {0} is not allow in QueryString.", name));
-                    throw new MissingParametersException(String.Format("Parameter {0} is not allow in QueryString.", name));
+                    DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Parameter {0} is not allow in QueryString.", details.Key));
+                    throw new MissingParametersException(String.Format("Parameter {0} is not allow in QueryString.", details.Key));
                 }
             }
+            #endregion
 
-            // ----- URI Path parameters -----
+            #region ----- URI Path parameters -----
             allowedParams = method.ApiCommand.GetParametersByLocation(RestLocation.Path);
 
-            if (Request.RequestUri.Segments.Length - 4 < allowedParams.Count)
+            if (Request.RequestUri.Segments.Length - 4 <= allowedParams.Count)
             {
                 for (int i = 4; i < Request.RequestUri.Segments.Length; i++)
                 {
@@ -247,26 +291,28 @@ namespace DynamicPowerShellApi.Controllers
                     inParams.Add(new KeyValuePair<string, object>(name, value));
                 }
             }
-            else
+            else if (Request.RequestUri.Segments.Length - 4 > allowedParams.Count)
             {
                 DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Too many parameters in Path."));
                 throw new MissingParametersException(String.Format("Too many parameters in Path."));
             }
+            #endregion
 
-            // ----- Header parameters -----
-            List<string> allowedParamNames = method.ApiCommand.GetParametersByLocation(RestLocation.Header).Select(x => x.Name).ToList();
+            #region ----- Header parameters -----
+            List<string> allowedParamNames = method.ApiCommand.GetParametersByLocation(RestLocation.Header).Select(x => x.Name.ToLower()).ToList();
 
-            Request.Headers.Where(x => allowedParamNames.Contains(x.Key))
+            Request.Headers.Where(x => allowedParamNames.Contains(x.Key.ToLower()))
                            .ToList()
                            .ForEach(x => inParams.Add(new KeyValuePair<string, object>(x.Key, x.Value)));
+            #endregion
 
-            // ----- Check if all parameters required are found -----
+            #region ----- Check if all parameters required are found -----
             if (method.ApiCommand.GetParametersRequired().Select(x => x.Name).Any(requiedName => inParams.All(q => q.Key != requiedName)))
             {
                 DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Cannot find all parameters required."));
                 throw new MissingParametersException("Cannot find all parameters required.");
             }
-
+            #endregion
 
 
             // We now catch an exception from the runner
@@ -309,7 +355,7 @@ namespace DynamicPowerShellApi.Controllers
                                         method.PowerShellPath,
                                         method.Snapin,
                                         method.Module,
-                                        inParams.ToList(),
+                                        inParams,
                                         true);
 
                                 goTask.Wait();

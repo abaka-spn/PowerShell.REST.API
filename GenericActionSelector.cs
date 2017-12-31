@@ -49,8 +49,14 @@
 		/// </returns>
 		public HttpActionDescriptor SelectAction(HttpControllerContext controllerContext)
 		{
-			// if the user is requesting the server status..
-			if (controllerContext.Request.RequestUri.AbsolutePath == Constants.StatusUrlPath)
+            // if the user is requesting the server status..
+            
+            if (controllerContext.Request.RequestUri.AbsolutePath == Constants.SpecificationUrlPath)
+                return new ReflectedHttpActionDescriptor(
+                    new HttpControllerDescriptor(_currentConfiguration, "generic", typeof(GenericController)),
+                    typeof(GenericController).GetMethod("GetApiSpecification"));
+
+            if (controllerContext.Request.RequestUri.AbsolutePath == Constants.StatusUrlPath)
 				return new ReflectedHttpActionDescriptor(
 					new HttpControllerDescriptor(_currentConfiguration, "generic", typeof(GenericController)),
 					typeof(GenericController).GetMethod("Status"));
