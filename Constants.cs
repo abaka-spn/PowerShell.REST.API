@@ -5,10 +5,15 @@ namespace DynamicPowerShellApi
 	/// <summary>	A constants helper class. </summary>
 	public static class Constants
 	{
-		/// <summary>	
-		/// 	Full pathname of the status URL file. 
-		/// </summary>
-		public const string StatusUrlPath = "/api/server/status";
+        /// <summary>	
+        /// 	Full pathname of OpenApi specification URL file. 
+        /// </summary>
+        public const string SpecificationUrlPath = "/api/server/spec";
+
+        /// <summary>	
+        /// 	Full pathname of the status URL file. 
+        /// </summary>
+        public const string StatusUrlPath = "/api/server/status";
 
 		/// <summary>	Full pathname of the job list file. </summary>
 		public const string JobListPath = "/api/server/jobs";

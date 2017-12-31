@@ -68,6 +68,22 @@ namespace DynamicPowerShellApi.Configuration
 #endif
             };
 
+        Dictionary<Type, Func<object, IOpenApiAny>> ConvertObjectToOpenApi = 
+            new Dictionary<Type, Func<object, IOpenApiAny>>
+            {
+                {typeof(int), (x) => new OpenApiInteger((int)x) },
+                {typeof(string), (x) => new OpenApiString((string)x) },
+                {typeof(byte[]), (x) => new OpenApiBinary((byte[])x) },
+                {typeof(bool), (x) => new OpenApiBoolean((bool)x) },
+                {typeof(byte), (x) => new OpenApiByte((byte)x) },
+                {typeof(DateTime), (x) => new OpenApiDate((DateTime)x) },
+                {typeof(double), (x) => new OpenApiDouble((double)x) },
+                {typeof(float), (x) => new OpenApiFloat((float)x) },
+                {typeof(long), (x) => new OpenApiLong((long)x) }
+                //{typeof(string), (x) => new OpenApiPassword((string)x) },
+                //{typeof(object), (x) => new OpenApiObject((object)x) },
+                //{typeof(null), (x) => new OpenApiNull((null)x) },
+            };
 
 
 
@@ -83,15 +99,28 @@ namespace DynamicPowerShellApi.Configuration
             {
                 _type = value;
 
-                JSchemaType schemaType = JSchemaType.None;
-
-                if (JSchemaTypeMap.ContainsKey(_type))
+                //JSchemaType schemaType = JSchemaType.None;
+                if (_type.IsArray)
                 {
-                    _jsonSchema.Type = schemaType | JSchemaTypeMap[_type];
+                    _jsonSchema.Type = JSchemaType.Array;
+
+                    var elementType = _type.GetElementType();
+                    if (JSchemaTypeMap.ContainsKey(elementType))
+                    {
+                        _jsonSchema.Items.Add(new JSchema() { Type = JSchemaTypeMap[elementType] });
+                    }
+                    else
+                    {
+                        _jsonSchema.Items.Add(new JSchema() { Type = JSchemaType.Object });
+                    }
+                }
+                else if (JSchemaTypeMap.ContainsKey(_type))
+                {
+                    _jsonSchema.Type = JSchemaTypeMap[_type];
                 }
                 else
                 {
-                    _jsonSchema.Type = schemaType | JSchemaType.String | JSchemaType.Boolean | JSchemaType.Integer | JSchemaType.Number | JSchemaType.Object | JSchemaType.Array;
+                    _jsonSchema.Type = JSchemaType.Object;
                 }
             }
         }
@@ -140,9 +169,9 @@ namespace DynamicPowerShellApi.Configuration
 
         public bool AllowEmpty { get; set; } = true;
 
-        public string DefaultValue { get; set; } = "";
+        public object DefaultValue { get; set; }
 
-        public string Description { get; set; } = "";
+        public string Description { get; set; }
 
         public RestLocation Location { get; set; } = Constants.DefaultParameterLocation;
         /* 
@@ -255,36 +284,55 @@ namespace DynamicPowerShellApi.Configuration
         public JSchema GetJsonSchema()
         {
             _jsonSchema.Description = Description;
-            _jsonSchema.Default = DefaultValue;
+            _jsonSchema.Default = DefaultValue == null ? null : JToken.FromObject(DefaultValue);
 
             return _jsonSchema;
         }
 
         public OpenApiSchema GetSchemaOpenApiSchema()
         {
+            var jsonSchema = GetJsonSchema();
+
+            IOpenApiAny defaultValue = null;
+            if (DefaultValue != null && ConvertObjectToOpenApi.ContainsKey(DefaultValue.GetType()))
+                defaultValue = ConvertObjectToOpenApi[DefaultValue.GetType()](DefaultValue);
 
             return new OpenApiSchema
             {
-                Description = _jsonSchema.Description,
-                Type = _jsonSchema.Type.ToString().ToLower(),
-
-                Default = new OpenApiString(DefaultValue),
-                //schema.MultipleOf = (decimal?)_jsonSchema.MultipleOf; // -> N/A in PowerShell Attribute
-                Minimum = (decimal?)_jsonSchema.Minimum, // -> ValidateRange
-                Maximum = (decimal?)_jsonSchema.Maximum, // -> ValidateRange
-                                                         //schema.ExclusiveMinimum = (bool)_jsonSchema.ExclusiveMinimum; // -> N/A in PowerShell Attribute
-                                                         //schema.ExclusiveMaximum = (bool)_jsonSchema.ExclusiveMaximum; // -> N/A in PowerShell Attribute
-                MaxLength = (int?)_jsonSchema.MaximumLength, // -> ValidateLength
-                MinLength = (int?)_jsonSchema.MinimumLength, // -> ValidateLength
-                Pattern = _jsonSchema.Pattern,      // -> ValidatePattern
-                MinItems = (int?)_jsonSchema.MinimumItems,   // -> ValidateCount
-                MaxItems = (int?)_jsonSchema.MaximumItems,   // -> ValidateCount
-                                                             //schema.UniqueItems = (bool)_jsonSchema.UniqueItems; // -> N/A in PowerShell Attribute
-                                                             //schema.MaxProperties = (int?)_jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
-                                                             //schema.MinProperties = (int?)_jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
+                Description = jsonSchema.Description,
+                Type = jsonSchema.Type.ToString().ToLower(),
+                Items = jsonSchema.Items.Select(x => new OpenApiSchema { Type = x.Type.ToString().ToLower() }).FirstOrDefault(),
+                Default = defaultValue,
+                //MultipleOf = (decimal?)jsonSchema.MultipleOf; // -> N/A in PowerShell Attribute
+                Minimum = (decimal?)jsonSchema.Minimum, // -> ValidateRange
+                Maximum = (decimal?)jsonSchema.Maximum, // -> ValidateRange
+                //ExclusiveMinimum = (bool)jsonSchema.ExclusiveMinimum; // -> N/A in PowerShell Attribute
+                //ExclusiveMaximum = (bool)jsonSchema.ExclusiveMaximum; // -> N/A in PowerShell Attribute
+                MaxLength = (int?)jsonSchema.MaximumLength, // -> ValidateLength
+                MinLength = (int?)jsonSchema.MinimumLength, // -> ValidateLength
+                Pattern = jsonSchema.Pattern,      // -> ValidatePattern
+                MinItems = (int?)jsonSchema.MinimumItems,   // -> ValidateCount
+                MaxItems = (int?)jsonSchema.MaximumItems,   // -> ValidateCount
+                //UniqueItems = (bool)jsonSchema.UniqueItems; // -> N/A in PowerShell Attribute
+                //MaxProperties = (int?)jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
+                //MinProperties = (int?)jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
                 Enum = _jsonSchema.Enum.Values<string>().ToList().Select(x => (IOpenApiAny)new OpenApiString(x)).ToList() // -> ValidateSet
             };
         }
 
+        private Action<object> Switch2(params Func<object, Action>[] tests)
+        {
+            return o =>
+            {
+                tests
+                    .Select(f => f(o))
+                    .FirstOrDefault(a => a != null)?.Invoke();
+            };
+        }
+
+        private Func<object, Action> Case<T>(Action<T> action)
+        {
+            return o => o is T ? (Action)(() => action((T)o)) : (Action)null;
+        }
     }
 }

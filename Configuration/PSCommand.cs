@@ -56,7 +56,7 @@ namespace DynamicPowerShellApi.Configuration
         /// </summary>
         public List<PSParameter> GetParametersByLocation(RestLocation location)
         {
-            return Parameters.Where(x => x.Location == RestLocation.Path)
+            return Parameters.Where(x => x.Location == location)
                              .OrderBy(x => x.Position)
                              .ToList();
         }
@@ -65,7 +65,7 @@ namespace DynamicPowerShellApi.Configuration
 
         public string GetRoutePath(string rootApiPath)
         {
-            string route = string.Format("{0}/{1}/{2}", rootApiPath, ApiName, CommandName);
+            string route = string.Format("{0}/{1}/{2}", rootApiPath, ApiName, Name);
 
             Parameters.Where(x => x.Location == RestLocation.Path)
                       .OrderBy(x => x.Position)

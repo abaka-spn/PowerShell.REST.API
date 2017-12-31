@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DynamicPowerShellApi.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -76,6 +77,17 @@ namespace DynamicPowerShellApi.Configuration
             //int i = CmdHelp.Parameters.parameter.Count;// .Where(x => x.Name == "parameters").Count;
 
             dynamic[] CmdHelpParamters;
+
+            var a = new PSObject();
+
+            //_cmdHelp.Properties.Where(x => x.Name == "Parameters")
+            if (_cmdHelp.Parameters == null)
+            {
+                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Help of command {0} is malformed.", apiCmd.CommandName));
+                throw new MissingParametersException(String.Format("Help of command {0} is malformed.", apiCmd.CommandName));
+
+            }
+
             if (_cmdHelp.Parameters.parameter is Array)
                 CmdHelpParamters = (dynamic[])_cmdHelp.Parameters.parameter; //.ToArray();
             else
@@ -92,13 +104,21 @@ namespace DynamicPowerShellApi.Configuration
                 ParameterMetadata pMeta = _cmdInfo.Parameters[ParamName];
                 ParameterAttribute Attrib = pMeta.Attributes.OfType<ParameterAttribute>().FirstOrDefault();
 
+                object def = ((PSObject)psHelpParam.defaultValue)?.BaseObject;
+                if (psHelpParam.defaultValue != null)
+                {
+                    if (pMeta.ParameterType.Equals(typeof(string)))
+                        def = psHelpParam.defaultValue.BaseObject;
+                    else if (pMeta.ParameterType.Equals(typeof(int)))
+                        def = int.Parse(def.ToString());
+                }
 
                 var pi = new PSParameter(ParamName, pMeta.ParameterType)
                 {
                     // from HelpInfo
                     //pi.TypeName = psHelpParam.parameterValue.ToString();
-                    DefaultValue = psHelpParam.defaultValue == null ? "" : psHelpParam.defaultValue.ToString(),
-                    Description = psHelpParam.description == null ? "" : psHelpParam.description[0].Text,
+                    DefaultValue = def,
+                    Description = psHelpParam.description?[0].Text,
                     Position = int.Parse(psHelpParam.position),
 
                     // from CommandInfo
@@ -205,8 +225,13 @@ namespace DynamicPowerShellApi.Configuration
             {
                 if (module.EndsWith(".psm1") || module.EndsWith(".psd1"))
                 {
-                    string strBaseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                    module = File.ReadAllText(Path.Combine(ApiPath.ScriptRepository, module));
+                    module = Path.Combine(ApiPath.ScriptRepository, module);
+
+                    if (! File.Exists(module))
+                    {
+                        Console.WriteLine(String.Format("Cannot find module file {0}", module));
+                        DynamicPowershellApiEvents.Raise.ConfigurationError(String.Format("Cannot find module file {0}", module));
+                    }
                 }
 
                 initialSession.ImportPSModule(new[] { module });
@@ -265,7 +290,7 @@ namespace DynamicPowerShellApi.Configuration
 
 
 
-                        ps.AddCommand("Get-Help").AddParameter("Name", command);
+                        ps.AddCommand("Get-Help").AddParameter("Name", command).AddParameter("Full");
                         result = ps.Invoke();
                         ps.Commands.Clear();
 

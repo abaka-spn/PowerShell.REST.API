@@ -103,5 +103,6 @@ namespace DynamicPowerShellApi.Configuration
 				yield return BaseGet(i) as WebApi;
 			}
 		}
+
 	}
 }

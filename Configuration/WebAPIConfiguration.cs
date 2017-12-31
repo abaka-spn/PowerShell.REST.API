@@ -3,6 +3,8 @@
     using System;
     using System.Collections.Generic;
     using System.Configuration;
+    using System.IO;
+    using System.Linq;
 
     /// <summary>
     /// The web api configuration.
@@ -94,7 +96,8 @@
         /// <summary>
         /// Gets the singleton instance of <see cref="WebApiConfiguration"/>.
         /// </summary>
-        [ConfigurationProperty("Version", IsRequired = false)]
+        [ConfigurationProperty("Version", IsRequired = false, DefaultValue = "0.0.0.0")]
+        [RegexStringValidator(@"^\d+\.\d+\.\d+\.\d+$*")]
         public string Version
         {
             get
@@ -103,9 +106,46 @@
             }
         }
 
-
         public static void LoadPSCommands()
         {
+            // Check if script files or modules files exist
+            List<string> files = new List<string>();
+
+            WebApiConfiguration.Instance.Apis
+                               .Select(x => x.Module)
+                               .Where(x => x.EndsWith(".psm1") ||
+                                           x.EndsWith(".psd1"))
+                               .ToList()
+                               .ForEach(x => files.Add(x));
+
+            WebApiConfiguration.Instance.Apis
+                               .SelectMany(x => x.WebMethods)
+                               .Select(x => x.Module)
+                               .Where(x => x.EndsWith(".psm1") ||
+                                           x.EndsWith(".psd1"))
+                               .ToList()
+                               .ForEach(x => files.Add(x));
+
+            WebApiConfiguration.Instance.Apis
+                               .SelectMany(x => x.WebMethods)
+                               .Select(x => x.PowerShellPath)
+                               .Where(x => x.EndsWith(".ps1"))
+                               .Distinct()
+                               .ToList()
+                               .ForEach(x => files.Add(x));
+
+            foreach (string file in files.Distinct())
+            {
+                var path = Path.Combine(ApiPath.ScriptRepository, file);
+
+                if (!File.Exists(path))
+                {
+                    Console.WriteLine(String.Format("Cannot find PowerShell file {0}", path));
+                    DynamicPowershellApiEvents.Raise.ConfigurationError(String.Format("Cannot find PowerShell file {0}", path));
+                }
+            }
+
+
             foreach (WebApi api in WebApiConfiguration.Instance.Apis)
             {
                 bool isModuleMode = !String.IsNullOrWhiteSpace(api.Module);
@@ -123,7 +163,7 @@
 
                     foreach (WebMethod webMethod in api.WebMethods)
                     {
-                        PSHelpInfo.InvokePS(api.Module, new[] { webMethod })
+                        PSHelpInfo.InvokePS(webMethod.Module, new[] { webMethod })
                                   .ForEach(x => psHelpInfo.Add(x));
                     }
                 }

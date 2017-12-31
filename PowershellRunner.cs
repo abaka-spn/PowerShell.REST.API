@@ -90,7 +90,7 @@ namespace DynamicPowerShellApi
 					}
 				}
 
-				InitialSessionState initialSession = InitialSessionState.Create();
+				InitialSessionState initialSession = InitialSessionState.CreateDefault2();
 				if (!String.IsNullOrWhiteSpace(module))
 				{
 					DynamicPowershellApiEvents
@@ -112,6 +112,10 @@ namespace DynamicPowerShellApi
 
 					foreach (var item in parametersList)
 						powerShellInstance.AddParameter(item.Key, item.Value);
+
+                    //TO DO : take charge other output format (CSV, ...)
+                    //https://github.com/DataBooster/PS-WebApi/blob/d0e38e9c06d0c21de4b64237dd61ad9e6a040460/src/DataBooster.PSWebApi/PSConfiguration.cs
+                    powerShellInstance.AddCommand("ConvertTo-Json").AddParameter("Compress");
 
 					// invoke execution on the pipeline (collecting output)
 					Collection<PSObject> psOutput = powerShellInstance.Invoke();
