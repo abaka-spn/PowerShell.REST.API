@@ -3,35 +3,71 @@ using System.Linq;
 namespace DynamicPowerShellApi.Configuration
 {
     using Newtonsoft.Json.Schema;
+    using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.Configuration;
+    using System.Net.Http;
+    using System.Text.RegularExpressions;
 
-	/// <summary>
-	/// The web method.
-	/// </summary>
-	public class WebMethod : ConfigurationElement
+    /// <summary>
+    /// The web method.
+    /// </summary>
+    public class WebMethod : ConfigurationElement
 	{
-		/// <summary>
-		/// Gets the name.
-		/// </summary>
-		[ConfigurationProperty("Name", IsKey = true)]
+        /// <summary>
+        /// Gets the name.
+        /// </summary>
+        [ConfigurationProperty("Name", IsKey = true)]
 		public string Name
 		{
 			get
 			{
 				return (string)this["Name"];
-			}
+            }
 		}
 
         /// <summary>
-        /// Gets the RestMethod.
+        /// Gets the HttpMethod.
         /// </summary>
-        [ConfigurationProperty("RestMethod", DefaultValue = RestMethod.Unknown)]
         public RestMethod RestMethod
         {
             get
             {
-                return (RestMethod)this["RestMethod"];
+                var i = this.Name.IndexOf("-");
+                if (i >= 0)
+                {
+                    string prefix = this.Name.Substring(0, i);
+                    if (Enum.TryParse(prefix, true, out RestMethod restMethod))
+                        return restMethod;
+                }
+
+                return Constants.DefaultRestMethod;
+
+
+                /*
+                if (string.IsNullOrWhiteSpace(this["RestMethod"]?.ToString()))
+                    return Constants.DefaultRestMethod;
+                else
+                {
+                    return (RestMethod)this["RestMethod"];
+                }
+                */
+            }
+        }
+
+        /// <summary>
+        /// Gets the HttpMethod.
+        /// </summary>
+        public string Route
+        {
+            get
+            {
+                var i = this.Name.IndexOf("-");
+                if (i >= 0)
+                    return this.Name.Substring(i+1);
+
+                return this.Name;
             }
         }
 
@@ -112,82 +148,5 @@ namespace DynamicPowerShellApi.Configuration
         /// </summary>
         public PSCommand ApiCommand { get; set; }
 
-        /*
-        /// <summary>
-        /// Gets all parameters defined in config file.
-        /// </summary>
-        public Dictionary<string, PSParameter> GetParametersRequired()
-        {
-            return ApiCommand.Parameters.Where(x => x.Required)
-                             .OrderBy(x => x.Position)
-                             .ToDictionary(x => x.Name, x => x);
-        }
-
-        /// <summary>
-        /// Gets all parameters for specific location.
-        /// </summary>
-        public Dictionary<string, PSParameter> GetParametersByLocation (RestLocation location)
-        {
-            return ApiCommand.Parameters.Where(x =>x.Location == RestLocation.Path)
-                             .OrderBy(x => x.Position)
-                             .ToDictionary(x => x.Name, x => x);
-        }
-
-
-        /*
-        //Name of the api on which it depends
-        public string ApiName { get; set; }
-
-        //Synopsis of Powershell command (from Powershell Help)
-        public string Synopsis { get; set; }
-
-        //Synopsis of Powershell command (from Powershell Help)
-        public string Description { get; set; }
-
-        //Name of PowwerShell Command to will be executed
-        public string PSCommand { get; set; }
-
-        // Module name of Command
-        public string PSModule { get; set; }
-
-
-        public string GetRoutePath()
-        {
-            string route = string.Format("{0}/{1}/{2}", "/api", ApiName, Name);
-
-            Parameters.Where(x => x.Location == RestLocation.Path)
-                      .OrderBy(x => x.Position)
-                      .Select(x => x.Name)
-                      .ToList()
-                      .ForEach(x => route += "/{" + x + "}");
-
-            return route;
-        }
-
-        public string GetQueryString()
-        {
-            var paz = Parameters.Where(x => x.Location == RestLocation.Query)
-                                .OrderBy(x => x.Position)
-                                .Select(x => x.Name + "={" + x.TypeName + "}")
-                                .ToArray();
-
-            if (paz.Length > 0)
-                return "?" + string.Join("&", paz);
-            else
-                return "";
-        }
-
-        public string GetRequestContentType()
-        {
-            var paz = Parameters.Where(x => x.Location == RestLocation.Body).Select(x => x.JsonType).ToArray();
-
-            if (paz.Length == 0)
-                return "text/plain";
-            else if (paz.Length == 1 && (paz[0] == JSchemaType.Array || paz[0] == JSchemaType.Object))
-                return "text/plain";
-            else
-                return "application/json";
-        }
-        */
     }
 }

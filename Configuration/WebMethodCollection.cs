@@ -31,7 +31,7 @@ namespace DynamicPowerShellApi.Configuration
 		protected override object GetElementKey(ConfigurationElement element)
 		{
 			return ((WebMethod)element).Name;
-		}
+        }
 
 		/// <summary>
 		/// Gets the element name.

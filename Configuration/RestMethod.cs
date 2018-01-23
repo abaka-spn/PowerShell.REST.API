@@ -1,8 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net.Http;
+using System.ComponentModel;
+using System.Configuration;
+using System.Globalization;
+
 
 namespace DynamicPowerShellApi.Configuration
 {
@@ -14,9 +15,6 @@ namespace DynamicPowerShellApi.Configuration
         //Operation CRUD
         //Entire Collection (e.g. /customers)
         //Specific Item (e.g. /customers/{id})
-
-        // Default
-        Unknown = -1,
 
         //Operation : Read
         //200 (OK), list of customers. Use pagination, sorting and filtering to navigate big lists.
@@ -49,5 +47,6 @@ namespace DynamicPowerShellApi.Configuration
         //Trace = 7 
 
     }
+
 
 }

@@ -1,4 +1,5 @@
 ﻿using DynamicPowerShellApi.Configuration;
+using System.Net.Http;
 
 namespace DynamicPowerShellApi
 {

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
+using System.Net.Http;
 
 namespace DynamicPowerShellApi.Configuration
 {
@@ -21,199 +22,233 @@ namespace DynamicPowerShellApi.Configuration
             { "Send",  RestMethod.Put },
             { "Write",  RestMethod.Put },
             { "Clear",  RestMethod.Delete },
-            { "Remove",  RestMethod.Delete }
+            { "Remove",  RestMethod.Delete },
+            { "Test",  RestMethod.Delete }
         };
 
         // Public Properties
-        public string Key { get { return _initialWebMethod.Name; } }
+        //public string WebMethodName { get { return _cmdConfig.Name; } }
 
 
         // Private Properties
-        CommandInfo _cmdInfo { get; set; }
+        WebMethod _cmdConfig { get; set; }
 
-        WebMethod _initialWebMethod { get; set; }
+        CommandInfo _cmdInfo { get; set; }
 
         dynamic _cmdHelp { get; set; }
 
+        string _module { get; set; } = "";
 
-        public PSHelpInfo(CommandInfo cmdInfo, PSObject cmdHelp, WebMethod initialWebMethod)
+        Uri _parentUri { get; set; }
+
+        /// <summary>
+        /// Initialize PSHelpInfo class
+        /// </summary>
+        /// <param name="cmdInfo">Result of Get-Command cmdlet. Use InvokePS() to build object</param>
+        /// <param name="cmdHelp">Result of Get-Help cmdlet. Use InvokePS() to build object</param>
+        /// <param name="initialWebMethod">WebMethod instance built from configuration file</param>
+        /// <param name="module">Module that must be loaded before running the command</param>
+        public PSHelpInfo(CommandInfo cmdInfo, PSObject cmdHelp, WebMethod initialWebMethod, string module, Uri parentUri)
         {
-            _initialWebMethod = initialWebMethod;
+            _cmdConfig = initialWebMethod;
 
             _cmdInfo = cmdInfo;
 
             _cmdHelp = cmdHelp; //.Properties;
+
+            _module = module;
+
+            _parentUri = parentUri;
         }
 
-        public PSCommand GetApiCommandInfo(string ApiName)
+        /// <summary>
+        /// Get PSCommand object from information loaded by InvokePS()
+        /// </summary>
+        /// <param name="ApiName">Name of api. Use to build route path</param>
+        /// <returns></returns>
+        public PSCommand GetPSCommand()
         {
-            var apiCmd = new PSCommand
-            {
+            if (_cmdConfig == null || _cmdHelp == null || _cmdInfo == null)
+                throw new InvalidOperationException("Command information was not loaded. Use InvokePS() before to load it.");
 
-                Name = this.Key,
-                ApiName = ApiName,
+
+            FunctionInfo funcInfo = _cmdInfo as FunctionInfo;
+            string psVerb = funcInfo?.Verb;
+
+            //UriBuilder uriBuilder = new UriBuilder(_parentUri.ToString());
+            //uriBuilder.Path += _cmdConfig.Name;
+
+            var psCmd = new PSCommand
+            {
+                WebMethodName = _cmdConfig.Name,
+                AsJob = _cmdConfig.AsJob,
+                Snapin = _cmdConfig.Snapin,
+                //Uri = uriBuilder.Uri,
+                //Uri = new Uri(string.Format("{0}/{1}",_parentUri.ToString(),_cmdConfig.Name) ,UriKind.Relative),
+                Uri = new Uri(_parentUri.ToString() + "/" + _cmdConfig.Route, UriKind.Relative),
+                Module = _module,
                 ModuleName = _cmdHelp.ModuleName ?? "",
                 CommandName = _cmdHelp.Name,
                 Synopsis = _cmdHelp.Synopsis ?? "",
                 Description = _cmdHelp.description == null ? "" : _cmdHelp.description[0].Text,
                 OutTypeName = _cmdInfo.OutputType.Select(x => x.Name.ToString()).ToArray(),
 
-                RestMethod = _initialWebMethod.RestMethod != RestMethod.Unknown
-                             ? _initialWebMethod.RestMethod
-                             : Constants.DefaultRestMethod,
-                //else if PsVerbMapping.ContainsKey(CmdInfo.Verb))
-                //RestMethod = PsVerbMapping[CmdInfo.Verb]
+                /*
+                RestMethod = _cmdConfig.RestMethod != null
+                             ? (RestMethod)_cmdConfig.RestMethod
+                             : psVerb != null && PsVerbMapping.ContainsKey(psVerb)
+                                ? PsVerbMapping[psVerb]
+                                : Constants.DefaultRestMethod
+                */
+                RestMethod = _cmdConfig.RestMethod
+
             };
 
-            if (_initialWebMethod.RestMethod != RestMethod.Unknown)
-                apiCmd.RestMethod = _initialWebMethod.RestMethod;
-            //else if PsVerbMapping.ContainsKey(CmdInfo.Verb))
-            //    RestMethod = CmdInfo.Verb;
-            else
-                apiCmd.RestMethod = Constants.DefaultRestMethod;
-
-
             // Not Available cmdInfo.Notes
-            //int i = CmdHelp.Parameters.parameter.Count;// .Where(x => x.Name == "parameters").Count;
 
-            dynamic[] CmdHelpParamters;
-
-            var a = new PSObject();
-
-            //_cmdHelp.Properties.Where(x => x.Name == "Parameters")
             if (_cmdHelp.Parameters == null)
             {
-                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Help of command {0} is malformed.", apiCmd.CommandName));
-                throw new MissingParametersException(String.Format("Help of command {0} is malformed.", apiCmd.CommandName));
+                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Help of command {0} is malformed.", psCmd.CommandName));
+                throw new MissingParametersException(String.Format("Help of command {0} is malformed.", psCmd.CommandName));
 
             }
 
-            if (_cmdHelp.Parameters.parameter is Array)
-                CmdHelpParamters = (dynamic[])_cmdHelp.Parameters.parameter; //.ToArray();
-            else
-                CmdHelpParamters = new dynamic[] { _cmdHelp.Parameters.parameter };
+            dynamic[] psHelpParamters = _cmdHelp.Parameters.parameter is Array
+                                        ? (dynamic[])_cmdHelp.Parameters.parameter
+                                        : new dynamic[] { _cmdHelp.Parameters.parameter };
 
-            foreach (dynamic psHelpParam in CmdHelpParamters)
+            int position = 0;
+            foreach (dynamic paramHelp in psHelpParamters)
             {
-
                 // Get Paramter Name
-                string ParamName = psHelpParam.name.ToString();
-                var initialParam = _initialWebMethod.Parameters.Where(x => x.Name.Equals(ParamName, StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
+                string paramName = paramHelp.name.ToString();
+                var paramConfig = _cmdConfig.Parameters.Where(x => x.Name.Equals(paramName, StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
 
                 // Informations from CommandInfo and HelpInfo
-                ParameterMetadata pMeta = _cmdInfo.Parameters[ParamName];
-                ParameterAttribute Attrib = pMeta.Attributes.OfType<ParameterAttribute>().FirstOrDefault();
+                ParameterMetadata paramMeta = _cmdInfo.Parameters[paramName];
+                ParameterAttribute paramAttrib = paramMeta.Attributes.OfType<ParameterAttribute>().FirstOrDefault();
 
-                object def = ((PSObject)psHelpParam.defaultValue)?.BaseObject;
-                if (psHelpParam.defaultValue != null)
+                object defaultValue = ((PSObject)paramHelp.defaultValue)?.BaseObject;
+                if (paramHelp.defaultValue != null)
                 {
-                    if (pMeta.ParameterType.Equals(typeof(string)))
-                        def = psHelpParam.defaultValue.BaseObject;
-                    else if (pMeta.ParameterType.Equals(typeof(int)))
-                        def = int.Parse(def.ToString());
+                    if (paramMeta.ParameterType.Equals(typeof(string)))
+                        defaultValue = paramHelp.defaultValue.BaseObject;
+                    else if (paramMeta.ParameterType.Equals(typeof(int)))
+                        defaultValue = int.Parse(defaultValue.ToString());
                 }
 
-                var pi = new PSParameter(ParamName, pMeta.ParameterType)
+                Type type = paramMeta.SwitchParameter ? typeof(bool) : paramMeta.ParameterType;
+
+                var psParam = new PSParameter(paramName, type)
                 {
                     // from HelpInfo
                     //pi.TypeName = psHelpParam.parameterValue.ToString();
-                    DefaultValue = def,
-                    Description = psHelpParam.description?[0].Text,
-                    Position = int.Parse(psHelpParam.position),
+                    DefaultValue = defaultValue,
+                    Description = paramHelp.description?[0].Text,
+                    Position = int.TryParse(paramHelp.position, out int pos) ? position = pos : ++position,
+                    IsSwitch = paramMeta.SwitchParameter,
 
                     // from CommandInfo
-                    //pi.Type = pMeta.ParameterType;
-                    Required = Attrib.Mandatory,
-                    HelpMessage = Attrib.HelpMessage,
-                    Hidden = Attrib.DontShow
+                    Required = paramAttrib.Mandatory,
+                    HelpMessage = paramAttrib.HelpMessage,
+                    Hidden = paramAttrib.DontShow
                 };
+                //position = psParam.Position;
 
-
-
-                if (pMeta.Attributes.OfType<ValidateNotNullOrEmptyAttribute>().FirstOrDefault() != null)
+                if (paramMeta.Attributes.OfType<ValidateNotNullOrEmptyAttribute>().FirstOrDefault() != null)
                 {
-                    pi.AllowEmpty = false;
-                    pi.AllowEmpty = false;
+                    psParam.AllowEmpty = false;
+                    psParam.AllowEmpty = false;
                 }
                 else
                 {
-                    pi.AllowNull = pMeta.Attributes.OfType<AllowNullAttribute>().FirstOrDefault() != null;
-                    pi.AllowEmpty = (pMeta.Attributes.OfType<AllowEmptyStringAttribute>().FirstOrDefault() != null) ||
-                                   (pMeta.Attributes.OfType<AllowEmptyCollectionAttribute>().FirstOrDefault() != null);
+                    psParam.AllowNull = paramMeta.Attributes.OfType<AllowNullAttribute>().FirstOrDefault() != null;
+                    psParam.AllowEmpty = (paramMeta.Attributes.OfType<AllowEmptyStringAttribute>().FirstOrDefault() != null) ||
+                                         (paramMeta.Attributes.OfType<AllowEmptyCollectionAttribute>().FirstOrDefault() != null);
                 }
 
-                pMeta.Attributes.OfType<ValidateCountAttribute>()
+                paramMeta.Attributes.OfType<ValidateCountAttribute>()
                                 .ToList()
                                 .ForEach(
                                     x =>
                                     {
-                                        pi.AddValidate(PSValidateType.ValidateCount_Min, x.MinLength);
-                                        pi.AddValidate(PSValidateType.ValidateCount_Max, x.MaxLength);
+                                        psParam.AddValidate(JsonValidate.MinItems, x.MinLength);
+                                        psParam.AddValidate(JsonValidate.MaxItems, x.MaxLength);
                                     });
 
-                pMeta.Attributes.OfType<ValidateLengthAttribute>()
+                paramMeta.Attributes.OfType<ValidateLengthAttribute>()
                                 .ToList()
                                 .ForEach(
                                     x =>
                                     {
-                                        pi.AddValidate(PSValidateType.ValidateLength_Min, x.MinLength);
-                                        pi.AddValidate(PSValidateType.ValidateLength_Max, x.MaxLength);
+                                        psParam.AddValidate(JsonValidate.MinLength, (long)x.MinLength);
+                                        psParam.AddValidate(JsonValidate.MaxLength, (long)x.MaxLength);
                                     });
 
-                pMeta.Attributes.OfType<ValidatePatternAttribute>()
+                paramMeta.Attributes.OfType<ValidatePatternAttribute>()
                                 .ToList()
                                 .ForEach(
-                                    x => pi.AddValidate(PSValidateType.ValidatePattern, x.RegexPattern)
+                                    x => psParam.AddValidate(JsonValidate.Pattern, x.RegexPattern)
                                 );
 
-                pMeta.Attributes.OfType<ValidateRangeAttribute>()
+                paramMeta.Attributes.OfType<ValidateRangeAttribute>()
                                 .ToList()
                                 .ForEach(
                                     x =>
                                     {
-                                        pi.AddValidate(PSValidateType.ValidateRange_Min, x.MinRange);
-                                        pi.AddValidate(PSValidateType.ValidateRange_Max, x.MaxRange);
+                                        psParam.AddValidate(JsonValidate.Minimum, double.Parse(x.MinRange.ToString()));
+                                        psParam.AddValidate(JsonValidate.Maximum, double.Parse(x.MaxRange.ToString()));
                                     });
 
-                pMeta.Attributes.OfType<ValidateSetAttribute>()
+                paramMeta.Attributes.OfType<ValidateSetAttribute>()
                                 .ToList()
                                 .ForEach(
-                                    x => pi.AddValidate(PSValidateType.ValidateSet, x.ValidValues.ToArray())
+                                    x => psParam.AddValidate(JsonValidate.EnumSet, x.ValidValues.ToArray())
                                 );
 
+
+                // Parameter location
+                if (paramConfig?.Location == null)
+                {
+                    if (psCmd.RestMethod == RestMethod.Get)
+                        psParam.Location = RestLocation.Query;
+                    else
+                        psParam.Location = RestLocation.Body;
+                }
+                else
+                {
+                    psParam.Location = (RestLocation)paramConfig.Location;
+                }
+
+                if (psParam.Location == RestLocation.Header && (psParam.Name == "Accept" || psParam.Name == "Content-Type" || psParam.Name == "Authorization"))
+                {
+                    //TO DO : Write warning
+
+                    psParam.Location = RestLocation.Query;
+                }
 
                 //Overload paramters from App.config
-                if (initialParam != null)
+                if (paramConfig != null)
                 {
-                    if (initialParam.Hidden != null)
-                        pi.Hidden = (bool)initialParam.Hidden;
-
-                    pi.Location = initialParam.Location;
+                    if (paramConfig.Hidden != null)
+                        psParam.Hidden = (bool)paramConfig.Hidden;
                 }
 
-
-                if (pi.Location == RestLocation.Header && (pi.Name == "Accept" || pi.Name == "Content-Type" || pi.Name == "Authorization"))
-                {
-                    //TO DO : Avertissement 
-
-                    pi.Location = RestLocation.Query;
-                }
-
-
-
-
-                apiCmd.Parameters.Add(pi);
-                //apiCmd.Parameters.Add(pi.Name, pi);
+                // Add new parameter in collection
+                psCmd.Parameters.Add(psParam);
             }
 
-            return apiCmd;
+            return psCmd;
         }
 
 
-
-
-
-        public static List<PSHelpInfo> InvokePS(string module, IEnumerable<WebMethod> webMethods)
+        /// <summary>
+        /// Invoke PowerShell commands (Get-Command and Get-Help) to retrieve information about the input PowerShell command or module
+        /// </summary>
+        /// <param name="module">Module that must be loaded before running the command</param>
+        /// <param name="webMethods">List of WebMethod instance built from configuration file</param>
+        /// <returns></returns>
+        public static List<PSHelpInfo> InvokePS(string module, IEnumerable<WebMethod> webMethods, Uri BaseUri)
         {
 
             var returnValues = new List<PSHelpInfo>();
@@ -263,10 +298,10 @@ namespace DynamicPowerShellApi.Configuration
                         //TO DO tester le présence du fichier
                         if (!File.Exists(command))
                         {
-                            Console.Write(string.Format("Le fichier {0} n'existe pas. La commande {1} ne sera pas inventorié", command, webMethod.Name));
+                            Console.WriteLine(String.Format("File {0} not found. The command {1} will be not inventoried", command, webMethod.Name));
+                            DynamicPowershellApiEvents.Raise.ConfigurationError(String.Format("File {0} not found. The command {1} will be not inventoried", command, webMethod.Name));
                         }
                     }
-
 
                     if (command != "")
                     {
@@ -280,8 +315,8 @@ namespace DynamicPowerShellApi.Configuration
 
                         if (result.Count == 0)
                         {
-                            // DO : Raise Command not found
-                            Console.WriteLine(string.Format("Pas d'information a propos de la commande {0} trouvée.", command));
+                            Console.WriteLine(String.Format("No information for command {0}.", command));
+                            DynamicPowershellApiEvents.Raise.ConfigurationError(String.Format("No information for command {0}.", command));
                         }
                         else
                         {
@@ -297,7 +332,7 @@ namespace DynamicPowerShellApi.Configuration
                         if (result.Count == 0)
                         {
                             // DO : Raise Command not found
-                            Console.WriteLine(string.Format("Pas d'aide a propos de la commande {0} trouvée.", command));
+                            Console.WriteLine(string.Format("No PowerShell help for command {0}.", command));
                         }
                         else
                         {
@@ -305,7 +340,7 @@ namespace DynamicPowerShellApi.Configuration
                         }
 
                         if (psCmdInfo != null && psCmdHelp != null)
-                            returnValues.Add(new PSHelpInfo(psCmdInfo, psCmdHelp, webMethod));
+                            returnValues.Add(new PSHelpInfo(psCmdInfo, psCmdHelp, webMethod, module, BaseUri));
                     }
                 }
 
@@ -314,9 +349,6 @@ namespace DynamicPowerShellApi.Configuration
 
             return returnValues;
         }
-
-
-
 
     }
 }

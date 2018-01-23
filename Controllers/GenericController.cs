@@ -166,8 +166,28 @@ namespace DynamicPowerShellApi.Controllers
             if (Request.RequestUri.Segments.Length < 4)
                 throw new MalformedUriException(string.Format("There is {0} segments but must be at least 4 segments in the URI.", Request.RequestUri.Segments.Length));
 
+            // Check if Http Method is supported
+            if (!Enum.TryParse(request.Method.Method,true, out RestMethod requestMethod))
+            {
+                // Check that the verbose messaging is working
+                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Http method ({0}) not supported", request.Method.Method));
+                throw new WebApiNotFoundException(string.Format("Http method ({0}) not supported", request.Method.Method));
+            }
+
+            string route = Request.RequestUri.Segments.Take(4).Aggregate((current, next) => current + next.ToLower());
+            if (! WebApiConfiguration.Routes[requestMethod].ContainsKey(route))
+            {
+                // Check that the verbose messaging is working
+                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Cannot find the requested command for {0}", route));
+                throw new WebApiNotFoundException(string.Format("Cannot find the requested command for {0}", route));
+            }
+
+            PSCommand psCommand = WebApiConfiguration.Routes[requestMethod][route];
+
+            /*
             string apiName = Request.RequestUri.Segments[2].Replace("/", string.Empty);
-            string methodName = Request.RequestUri.Segments[3].Replace("/", string.Empty);
+            //string methodName = Request.RequestUri.Segments[3].Replace("/", string.Empty);
+            string methodName = requestMethod.ToString() + "-" + Request.RequestUri.Segments[3].Replace("/", string.Empty);
 
             // Check that the verbose messaging is working
             DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("The api name is {0} and the method is {1}", apiName, methodName));
@@ -181,23 +201,29 @@ namespace DynamicPowerShellApi.Controllers
                 throw new WebApiNotFoundException(string.Format("Cannot find the requested web API: {0}", apiName));
             }
 
-            // find the web method.
             WebMethod method = api.WebMethods[methodName];
             if (method == null)
             {
-                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Cannot find the requested web method: {0}", methodName));
-                throw new WebMethodNotFoundException(string.Format("Cannot find web method: {0}", methodName));
+
+                if (method == null)
+                {
+                    DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Cannot find the requested web method: {0}", methodName));
+                    throw new WebMethodNotFoundException(string.Format("Cannot find web method: {0}", methodName));
+                }
             }
 
             // Is this scheduled as a job?
             bool asJob = method.AsJob;
+            */
+
+            bool asJob = psCommand.AsJob;
 
             //var inParams = new Dictionary<string, object>();
             var inParams = new List<KeyValuePair<string, object>>();
             List<PSParameter> allowedParams;
 
             #region ----- Body parameters -----
-            allowedParams = method.ApiCommand.GetParametersByLocation(RestLocation.Body);
+            allowedParams = psCommand.GetParametersByLocation(RestLocation.Body);
 
             string documentContents = await Request.Content.ReadAsStringAsync();
             documentContents = documentContents.ToString().Trim();
@@ -261,34 +287,39 @@ namespace DynamicPowerShellApi.Controllers
             #endregion
 
             #region ----- QueryString parameters -----
-            allowedParams = method.ApiCommand.GetParametersByLocation(RestLocation.Query);
+            allowedParams = psCommand.GetParametersByLocation(RestLocation.Query);
 
-            foreach (var details in Request.GetQueryNameValuePairs())
+            foreach (var p in Request.GetQueryNameValuePairs())
             {
-                var param = allowedParams.FirstOrDefault(x => x.Name.Equals(details.Key, StringComparison.CurrentCultureIgnoreCase));
+                var param = allowedParams.FirstOrDefault(x => x.Name.Equals(p.Key, StringComparison.CurrentCultureIgnoreCase));
 
                 if (param != null)
                 {
-                    inParams.Add(new KeyValuePair<string, object>(param.Name, details.Value));
+                    var value = Convert.ChangeType(p.Value, param.Type);
+
+                    inParams.Add(new KeyValuePair<string, object>(param.Name, value));
                 }
                 else
                 {
-                    DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Parameter {0} is not allow in QueryString.", details.Key));
-                    throw new MissingParametersException(String.Format("Parameter {0} is not allow in QueryString.", details.Key));
+                    DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Parameter {0} is not allow in QueryString.", p.Key));
+                    throw new MissingParametersException(String.Format("Parameter {0} is not allow in QueryString.", p.Key));
                 }
             }
             #endregion
 
             #region ----- URI Path parameters -----
-            allowedParams = method.ApiCommand.GetParametersByLocation(RestLocation.Path);
+            allowedParams = psCommand.GetParametersByLocation(RestLocation.Path);
 
             if (Request.RequestUri.Segments.Length - 4 <= allowedParams.Count)
             {
                 for (int i = 4; i < Request.RequestUri.Segments.Length; i++)
                 {
-                    string name = allowedParams.Skip(i - 4).FirstOrDefault().Name;
-                    string value = Request.RequestUri.Segments[i].Replace("/", string.Empty);
-                    inParams.Add(new KeyValuePair<string, object>(name, value));
+                    string uriValue = Request.RequestUri.Segments[i].Replace("/", string.Empty);
+
+                    var param = allowedParams.Skip(i - 4).FirstOrDefault();
+                    var value = Convert.ChangeType(uriValue, param.Type);
+
+                    inParams.Add(new KeyValuePair<string, object>(param.Name, value));
                 }
             }
             else if (Request.RequestUri.Segments.Length - 4 > allowedParams.Count)
@@ -299,21 +330,34 @@ namespace DynamicPowerShellApi.Controllers
             #endregion
 
             #region ----- Header parameters -----
-            List<string> allowedParamNames = method.ApiCommand.GetParametersByLocation(RestLocation.Header).Select(x => x.Name.ToLower()).ToList();
+            List<string> allowedParamNames = psCommand.GetParametersByLocation(RestLocation.Header).Select(x => x.Name.ToLower()).ToList();
 
+            /*
             Request.Headers.Where(x => allowedParamNames.Contains(x.Key.ToLower()))
                            .ToList()
                            .ForEach(x => inParams.Add(new KeyValuePair<string, object>(x.Key, x.Value)));
+            */
+
+            foreach (var p in Request.Headers)
+            {
+                var param = allowedParams.FirstOrDefault(x => x.Name.Equals(p.Key, StringComparison.CurrentCultureIgnoreCase));
+
+                if (param != null)
+                {
+                    var value = Convert.ChangeType(p.Value, param.Type);
+                    inParams.Add(new KeyValuePair<string, object>(param.Name, value));
+                }
+            }
+
             #endregion
 
             #region ----- Check if all parameters required are found -----
-            if (method.ApiCommand.GetParametersRequired().Select(x => x.Name).Any(requiedName => inParams.All(q => q.Key != requiedName)))
+            if (psCommand.GetParametersRequired().Select(x => x.Name).Any(requiedName => inParams.All(q => q.Key != requiedName)))
             {
                 DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Cannot find all parameters required."));
                 throw new MissingParametersException("Cannot find all parameters required.");
             }
             #endregion
-
 
             // We now catch an exception from the runner
             try
@@ -323,11 +367,16 @@ namespace DynamicPowerShellApi.Controllers
                 if (!asJob)
                 {
                     PowershellReturn output =
-                        await _powershellRunner.ExecuteAsync(method.PowerShellPath, method.Snapin, method.Module, inParams.ToList(), asJob);
+                        await _powershellRunner.ExecuteAsync(psCommand.CommandName, psCommand.Snapin, psCommand.Module, inParams, asJob);
 
-                    JToken token = output.ActualPowerShellData.StartsWith("[")
-                        ? (JToken)JArray.Parse(output.ActualPowerShellData)
-                        : JObject.Parse(output.ActualPowerShellData);
+                    JToken token = string.IsNullOrWhiteSpace(output.ActualPowerShellData)
+                        ? new JObject()
+                        : output.ActualPowerShellData.StartsWith("[")
+                            ? (JToken)JArray.Parse(output.ActualPowerShellData)
+                            : JObject.Parse(output.ActualPowerShellData);
+
+
+                    JToken token2 = "";
 
                     return new HttpResponseMessage
                     {
@@ -352,9 +401,9 @@ namespace DynamicPowerShellApi.Controllers
                             {
                                 Task<PowershellReturn> goTask =
                                 _powershellRunner.ExecuteAsync(
-                                        method.PowerShellPath,
-                                        method.Snapin,
-                                        method.Module,
+                                        psCommand.CommandName,
+                                        psCommand.Snapin,
+                                        psCommand.Module,
                                         inParams,
                                         true);
 
@@ -387,7 +436,7 @@ namespace DynamicPowerShellApi.Controllers
                                     Exceptions = poException.Exceptions,
                                     LogTime = poException.LogTime,
                                     RequestAddress = requestedHost,
-                                    RequestMethod = methodName,
+                                    RequestMethod = psCommand.CommandName,
                                     RequestUrl = Request.RequestUri.ToString()
                                 };
                                 entry.SetActivityId(activityId);
@@ -436,7 +485,7 @@ namespace DynamicPowerShellApi.Controllers
                     Exceptions = poException.Exceptions,
                     LogTime = poException.LogTime,
                     RequestAddress = String.Empty, // TODO: Find a way of getting the request host.
-                    RequestMethod = methodName,
+                    RequestMethod = psCommand.CommandName,
                     RequestUrl = Request.RequestUri.ToString()
                 };
                 entry.SetActivityId(activityId);
@@ -471,7 +520,7 @@ namespace DynamicPowerShellApi.Controllers
                     },
                     LogTime = DateTime.Now,
                     RequestAddress = String.Empty, // TODO: Find a way of getting the request host.
-                    RequestMethod = methodName,
+                    RequestMethod = psCommand.CommandName,
                     RequestUrl = Request.RequestUri.ToString()
                 };
                 entry.SetActivityId(activityId);

@@ -147,11 +147,31 @@ Function Test-Demo
     $onePerson
 }
 
-Function Test-Demo2
-{
-    "OK"
-}
-#[Person]::Example() | ConvertTo-Json
-#Demo -Allow "allow1" | ConvertTo-Json
+<#
+.Synopsis
+Create a new animal
 
+.DESCRIPTION
+Create a new animal for the demo 
+
+.PARAMETER Name
+Name of animal
+
+.EXAMPLE
+    New-DemoAnimal -Name "Medor"
+
+.Notes
+    Author: Sébastien PICHON
+    Version: 1.0
+    Last Edit: 4/1/2018 15:30
+#>
+Function New-Animal
+{
+	Param
+    (
+		[string]$Name
+		)
+
+    "[NEW OK] The name of animal is $Name." 
+}
 

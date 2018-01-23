@@ -68,7 +68,7 @@ namespace DynamicPowerShellApi.Configuration
 #endif
             };
 
-        Dictionary<Type, Func<object, IOpenApiAny>> ConvertObjectToOpenApi = 
+        private static readonly Dictionary<Type, Func<object, IOpenApiAny>> ConvertObjectToOpenApi = 
             new Dictionary<Type, Func<object, IOpenApiAny>>
             {
                 {typeof(int), (x) => new OpenApiInteger((int)x) },
@@ -85,13 +85,17 @@ namespace DynamicPowerShellApi.Configuration
                 //{typeof(null), (x) => new OpenApiNull((null)x) },
             };
 
+        JSchema _jsonSchema = new JSchema();
+        Type _type;
 
-
+        /// <summary>
+        /// Name of parameter
+        /// </summary>
         public string Name { get; private set; }
 
-        JSchema _jsonSchema = new JSchema();
-
-        Type _type;
+        /// <summary>
+        /// .Net type of parameter
+        /// </summary>
         public Type Type
         {
             get { return _type; }
@@ -125,7 +129,9 @@ namespace DynamicPowerShellApi.Configuration
             }
         }
 
-
+        /// <summary>
+        /// Name of .Net type
+        /// </summary>
         public string TypeName { get { return _type.Name; } }
 
         /* JSON Schema Data Types 
@@ -144,6 +150,10 @@ namespace DynamicPowerShellApi.Configuration
         dateTime    string  date-time   As defined by date-time - RFC3339
         password    string  password    A hint to UIs to obscure input.
          */
+
+        /// <summary>
+        /// Json type name
+        /// </summary>
         public JSchemaType JsonType
         {
             get
@@ -152,18 +162,30 @@ namespace DynamicPowerShellApi.Configuration
             }
         }
 
-
+        /// <summary>
+        /// Position of parameter in URL for path location
+        /// </summary>
         public int Position { get; set; }
 
-
-        // PowerShell Parameter attributes
+        /// <summary>
+        /// Help message for paramter [Parameter(HelpMessage="bla bla ...")]
+        /// </summary>
         public string HelpMessage { get; set; } = "";
 
+        /// <summary>
+        /// Define if this parameter is required. (Add [Parameter(Mandatory=$true)] in PowerShell script)
+        /// </summary>
         public bool Required { get; set; } = false;
 
+        /// <summary>
+        /// Define if a hidden paramter (Add [Parameter(DontShow)] in PowerShell script)
+        /// </summary>
         public bool Hidden { get; set; } = false;
 
-        public bool Switch { get; set; } = false;
+        /// <summary>
+        /// Define if is a [switch] parameter in PowerShell Script
+        /// </summary>
+        public bool IsSwitch { get; set; } = false;
 
         public bool AllowNull { get; set; } = true;
 
@@ -171,116 +193,112 @@ namespace DynamicPowerShellApi.Configuration
 
         public object DefaultValue { get; set; }
 
+        /// <summary>
+        /// Description of Help command 
+        /// </summary>
         public string Description { get; set; }
 
+        /// <summary>
+        /// Location of parameter in rest query (body, query, path, ...)
+        /// </summary>
         public RestLocation Location { get; set; } = Constants.DefaultParameterLocation;
-        /* 
 
-        * PowerShell Validation attributes
-        ValidateCount
-        ValidateLength
-        ValidatePattern
-        ValidateRange
-        ValidateSet
-        ValidateNotNullOrEmpty
+        public Dictionary<JsonValidate, object> Validates = new Dictionary<JsonValidate, object>();
 
-        * JSON Schema definition
-        * https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md#schemaObject
-        multipleOf -> N/A
-        maximum -> ValidateRange
-        exclusiveMaximum -> N/A
-        minimum -> ValidateRange
-        exclusiveMinimum -> N/A
-        maxLength -> ValidateLength
-        minLength -> ValidateLength
-        pattern -> ValidatePattern
-        maxItems -> ValidateCount
-        minItems -> ValidateCount
-        uniqueItems -> N/A
-        maxProperties -> N/A
-        minProperties -> N/A
-        required -> Mandatory
-        enum -> ValidateSet
-        */
-
-        public Dictionary<string, object> Validates = new Dictionary<string, object>();
-
-        public void AddValidate(string name, object validate)
+        public void AddValidate(JsonValidate name, object validate)
         {
             Validates.Add(name, validate);
 
-            if (name.Equals("minimum", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.Minimum = (double)validate; // -> ValidateRange
-            if (name.Equals("maximum", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.Maximum = (double)validate; // -> ValidateRange
-            if (name.Equals("maxLength", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.MaximumLength = (int)validate; // -> ValidateLength
-            if (name.Equals("minLength", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.MinimumLength = (int)validate; // -> ValidateLength
-            if (name.Equals("pattern", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.Pattern = (string)validate;      // -> ValidatePattern
-            if (name.Equals("maxItems", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.MaximumItems = (int)validate;   // -> ValidateCount
-            if (name.Equals("minItems", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.MinimumItems = (int)validate;   // -> ValidateCount
-
-            if (name.Equals("enum", StringComparison.CurrentCultureIgnoreCase))
+            switch (name)
             {
-                JArray.FromObject(validate).ToList().ForEach(x => _jsonSchema.Enum.Add(x)); // -> ValidateSet
+                case JsonValidate.Minimum:
+                    _jsonSchema.Minimum = validate as double?; // -> ValidateRange
+                    break;
+                case JsonValidate.Maximum:
+                    _jsonSchema.Maximum = validate as double?; // -> ValidateRange
+                    break;
+                case JsonValidate.MaxLength:
+                    _jsonSchema.MaximumLength = validate as long?; // -> ValidateLength 
+                    break;
+                case JsonValidate.MinLength:
+                    _jsonSchema.MinimumLength = validate as long?; // -> ValidateLength
+                    break;
+                case JsonValidate.Pattern:
+                    _jsonSchema.Pattern = validate as string;      // -> ValidatePattern
+                    break;
+                case JsonValidate.MaxItems:
+                    _jsonSchema.MaximumItems = validate as int?;   // -> ValidateCount
+                    break;
+                case JsonValidate.MinItems:
+                    _jsonSchema.MinimumItems = validate as int?;   // -> ValidateCount
+                    break;
+                case JsonValidate.EnumSet:
+                    JArray.FromObject(validate).ToList().ForEach(x => _jsonSchema.Enum.Add(x)); // -> ValidateSet
+                    break;
+
             }
-
-            /* ***** In PowerShell is always false *****
-            if (name.Equals("exclusiveMinimum",StringComparison.CurrentCultureIgnoreCase))
-                _JsonSchema.ExclusiveMinimum = (bool)validate; // -> N/A
-            if (name.Equals("exclusiveMaximum",StringComparison.CurrentCultureIgnoreCase))
-                _JsonSchema.ExclusiveMaximum = (bool)validate; // -> N/A
-            */
-
-            /* ***** Not available with PowerShell Validate Attributes *****
-            if (name.Equals("multipleOf",StringComparison.CurrentCultureIgnoreCase))
-                _JsonSchema.MultipleOf = (double)validate;
-            if (name.Equals("uniqueItems",StringComparison.CurrentCultureIgnoreCase))
-                _JsonSchema.UniqueItems = (bool)validate; // -> N/A
-            if (name.Equals("maxProperties",StringComparison.CurrentCultureIgnoreCase))
-                _JsonSchema.MaxProperties = (int)validate; // -> N/A
-            if (name.Equals("minProperties",StringComparison.CurrentCultureIgnoreCase))
-                _JsonSchema.MinProperties = (int)validate; // -> N/A
-                */
 
         }
 
-        public void RemoveValidate(string name)
+        public void RemoveValidate(JsonValidate name)
         {
             Validates.Remove(name);
 
-            if (name.Equals("minimum", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.Minimum = null;
-            if (name.Equals("maximum", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.Maximum = null;
-            if (name.Equals("maxLength", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.MaximumLength = null;
-            if (name.Equals("minLength", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.MinimumLength = null;
-            if (name.Equals("pattern", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.Pattern = null;
-            if (name.Equals("maxItems", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.MaximumItems = null;
-            if (name.Equals("minItems", StringComparison.CurrentCultureIgnoreCase))
-                _jsonSchema.MinimumItems = null;
+            switch (name)
+            {
+                case JsonValidate.Minimum:
+                    _jsonSchema.Minimum = null;
+                    break;
+                case JsonValidate.Maximum:
+                    _jsonSchema.Maximum = null;
+                    break;
+                case JsonValidate.MaxLength:
+                    _jsonSchema.MaximumLength = null;
+                    break;
+                case JsonValidate.MinLength:
+                    _jsonSchema.MinimumLength = null;
+                    break;
+                case JsonValidate.Pattern:
+                    _jsonSchema.Pattern = null;
+                    break;
+                case JsonValidate.MaxItems:
+                    _jsonSchema.MaximumItems = null;
+                    break;
+                case JsonValidate.MinItems:
+                    _jsonSchema.MinimumItems = null;
+                    break;
+                case JsonValidate.EnumSet:
+                    _jsonSchema.Enum.Clear();
+                    break;
+
+            }
 
         }
 
+        /// <summary>
+        /// Initialize PSParamter object
+        /// </summary>
+        /// <param name="name">Name of parameter</param>
         public PSParameter(string name)
         {
             Name = name;
         }
 
+        /// <summary>
+        /// Initialize PSParamter object
+        /// </summary>
+        /// <param name="name">Name of parameter</param>
+        /// <param name="objectType">.Net type of paramter</param>
         public PSParameter(string name, Type objectType)
         {
             Name = name;
             Type = objectType;
         }
 
+        /// <summary>
+        /// Get parameter schema OpenApi schema in Json format
+        /// </summary>
+        /// <returns></returns>
         public JSchema GetJsonSchema()
         {
             _jsonSchema.Description = Description;
@@ -289,6 +307,10 @@ namespace DynamicPowerShellApi.Configuration
             return _jsonSchema;
         }
 
+        /// <summary>
+        /// Get parameter schema OpenApi schema in Open API format
+        /// </summary>
+        /// <returns></returns>
         public OpenApiSchema GetSchemaOpenApiSchema()
         {
             var jsonSchema = GetJsonSchema();
@@ -318,21 +340,6 @@ namespace DynamicPowerShellApi.Configuration
                 //MinProperties = (int?)jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
                 Enum = _jsonSchema.Enum.Values<string>().ToList().Select(x => (IOpenApiAny)new OpenApiString(x)).ToList() // -> ValidateSet
             };
-        }
-
-        private Action<object> Switch2(params Func<object, Action>[] tests)
-        {
-            return o =>
-            {
-                tests
-                    .Select(f => f(o))
-                    .FirstOrDefault(a => a != null)?.Invoke();
-            };
-        }
-
-        private Func<object, Action> Case<T>(Action<T> action)
-        {
-            return o => o is T ? (Action)(() => action((T)o)) : (Action)null;
         }
     }
 }

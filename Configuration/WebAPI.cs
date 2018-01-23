@@ -34,6 +34,17 @@ namespace DynamicPowerShellApi.Configuration
         }
 
         /// <summary>
+        /// Gets the module.
+        /// </summary>
+        [ConfigurationProperty("DiscoveryComands", IsKey = false)]
+        public string DiscoveryComands
+        {
+            get
+            {
+                return (string)this["DiscoveryComands"];
+            }
+        }
+        /// <summary>
         /// Gets the web methods.
         /// </summary>
         [ConfigurationProperty("WebMethods")]

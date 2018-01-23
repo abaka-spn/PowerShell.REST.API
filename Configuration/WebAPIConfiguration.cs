@@ -106,6 +106,16 @@
             }
         }
 
+
+        public static Dictionary<RestMethod, Dictionary<string, PSCommand>> Routes = new Dictionary<RestMethod, Dictionary<string, PSCommand>>
+        {
+            { RestMethod.Delete, new Dictionary<string, PSCommand>() },
+            { RestMethod.Get, new Dictionary<string, PSCommand>() },
+            { RestMethod.Patch, new Dictionary<string, PSCommand>() },
+            { RestMethod.Post, new Dictionary<string, PSCommand>() },
+            { RestMethod.Put, new Dictionary<string, PSCommand>() }
+        };
+
         public static void LoadPSCommands()
         {
             // Check if script files or modules files exist
@@ -149,13 +159,14 @@
             foreach (WebApi api in WebApiConfiguration.Instance.Apis)
             {
                 bool isModuleMode = !String.IsNullOrWhiteSpace(api.Module);
-
+                
+                Uri BaseUri = new Uri("/api/" + api.Name, UriKind.Relative);
 
                 List<PSHelpInfo> psHelpInfo;
 
                 if (isModuleMode)
                 {
-                    psHelpInfo = PSHelpInfo.InvokePS(api.Module, api.WebMethods);
+                    psHelpInfo = PSHelpInfo.InvokePS(api.Module, api.WebMethods, BaseUri);
                 }
                 else
                 {
@@ -163,15 +174,22 @@
 
                     foreach (WebMethod webMethod in api.WebMethods)
                     {
-                        PSHelpInfo.InvokePS(webMethod.Module, new[] { webMethod })
+                        PSHelpInfo.InvokePS(webMethod.Module, new[] { webMethod }, BaseUri)
                                   .ForEach(x => psHelpInfo.Add(x));
                     }
                 }
 
+                //if (api.DiscoveryComands != "")
+
                 foreach (var onePsHelpInfo in psHelpInfo)
                 {
                     //Fill and Add Command informations to the instance
-                    api.WebMethods[onePsHelpInfo.Key].ApiCommand = onePsHelpInfo.GetApiCommandInfo(api.Name);
+                    PSCommand psCommand = onePsHelpInfo.GetPSCommand();
+
+                    api.WebMethods[psCommand.WebMethodName].ApiCommand = psCommand;
+
+                    Routes[psCommand.RestMethod][psCommand.GetRoutePath().ToLower()] = psCommand;
+
                 }
             }
 

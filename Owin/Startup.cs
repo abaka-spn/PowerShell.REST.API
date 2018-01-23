@@ -176,11 +176,16 @@ namespace DynamicPowerShellApi.Owin
 
             WebApiConfiguration.LoadPSCommands();
 
+            //var options = new StartOptions();
+            //options.Urls.Add(baseAddress.ToString());
 
-			Uri baseAddress = WebApiConfiguration.Instance.HostAddress;
+
+            Uri baseAddress = WebApiConfiguration.Instance.HostAddress;
 
 			// Start OWIN host 
 			return WebApp.Start<Startup>(url: baseAddress.ToString());
 		}
-	}
+
+        public static string BaseUrl => WebApiConfiguration.Instance.HostAddress.ToString();
+    }
 }

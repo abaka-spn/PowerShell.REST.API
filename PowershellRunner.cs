@@ -73,7 +73,7 @@ namespace DynamicPowerShellApi
 			try
 			{
 				string strBaseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-				string scriptContent = File.ReadAllText(Path.Combine(strBaseDirectory, Path.Combine("ScriptRepository", filename)));
+				//string scriptContent = File.ReadAllText(Path.Combine(strBaseDirectory, Path.Combine("ScriptRepository", filename)));
 
 				RunspaceConfiguration rsConfig = RunspaceConfiguration.Create();
 
@@ -99,121 +99,132 @@ namespace DynamicPowerShellApi
 					initialSession.ImportPSModule(new[] { module });
 				}
 
-				using (PowerShell powerShellInstance = PowerShell.Create(initialSession))
-				{
-					powerShellInstance.RunspacePool = RunspacePoolWrapper.Pool;
-					if (powerShellInstance.Runspace == null)
-					{
-						powerShellInstance.Runspace = RunspaceFactory.CreateRunspace(rsConfig);
-						powerShellInstance.Runspace.Open();
-					}
+                using (PowerShell powerShellInstance = PowerShell.Create(initialSession))
+                {
+                    //powerShellInstance.RunspacePool = RunspaceFactory.CreateRunspacePool(initialSession); //RunspacePoolWrapper.Pool;
 
-					powerShellInstance.AddScript(scriptContent);
 
-					foreach (var item in parametersList)
-						powerShellInstance.AddParameter(item.Key, item.Value);
+                    if (powerShellInstance.Runspace == null)
+                    {
+                        powerShellInstance.Runspace = RunspaceFactory.CreateRunspace(rsConfig);
+                        powerShellInstance.Runspace.Open();
+                    }
+
+
+                    //powerShellInstance.AddCommand("Set-Location").AddParameter("LiteralPath", Path.GetDirectoryName(filename);
+                    //powerShellInstance.AddStatement();
+
+                    //ps.AddCommand("Import-Module", true).AddParameter("Name", module);
+                    //ps.AddStatement();
+
+                    //powerShellInstance.AddScript(scriptContent);
+
+                    powerShellInstance.AddCommand(filename, true);
+
+                    foreach (var item in parametersList)
+                        powerShellInstance.AddParameter(item.Key, item.Value);
 
                     //TO DO : take charge other output format (CSV, ...)
                     //https://github.com/DataBooster/PS-WebApi/blob/d0e38e9c06d0c21de4b64237dd61ad9e6a040460/src/DataBooster.PSWebApi/PSConfiguration.cs
                     powerShellInstance.AddCommand("ConvertTo-Json").AddParameter("Compress");
 
-					// invoke execution on the pipeline (collecting output)
-					Collection<PSObject> psOutput = powerShellInstance.Invoke();
+                    // invoke execution on the pipeline (collecting output)
+                    Collection<PSObject> psOutput = powerShellInstance.Invoke();
 
-					string sMessage = psOutput == null
-						? String.Empty
-						: (
-							psOutput.LastOrDefault() != null
-							? Regex.Replace(psOutput.LastOrDefault().ToString(), @"[^\u0000-\u007F]", string.Empty)
-								: String.Empty);
+                    string sMessage = psOutput == null
+                        ? String.Empty
+                        : (
+                            psOutput.LastOrDefault() != null
+                            ? Regex.Replace(psOutput.LastOrDefault().ToString(), @"[^\u0000-\u007F]", string.Empty)
+                                : String.Empty);
 
-					DynamicPowershellApiEvents.Raise.PowerShellScriptFinalised("The powershell has completed - anlaysing results now");
+                    DynamicPowershellApiEvents.Raise.PowerShellScriptFinalised("The powershell has completed - anlaysing results now");
 
-					// check the other output streams (for example, the error stream)
-					if (powerShellInstance.HadErrors && powerShellInstance.Streams.Error.Count > 0)
-					{
-						var runtimeErrors = new List<PowerShellException>();
+                    // check the other output streams (for example, the error stream)
+                    if (powerShellInstance.HadErrors && powerShellInstance.Streams.Error.Count > 0)
+                    {
+                        var runtimeErrors = new List<PowerShellException>();
 
-						// Create a string builder for the errors
-						StringBuilder sb = new StringBuilder();
+                        // Create a string builder for the errors
+                        StringBuilder sb = new StringBuilder();
 
-						// error records were written to the error stream.
-						// do something with the items found.
-						sb.Append("PowerShell script raised errors:" + Environment.NewLine);
-						sb.Append(String.Format("{0}", sMessage));
+                        // error records were written to the error stream.
+                        // do something with the items found.
+                        sb.Append("PowerShell script raised errors:" + Environment.NewLine);
+                        sb.Append(String.Format("{0}", sMessage));
 
-						var errors = powerShellInstance.Streams.Error.ReadAll();
-						if (errors != null)
-						{
-							foreach (var error in errors)
-							{
-								if (error.ErrorDetails == null)
-									DynamicPowershellApiEvents.Raise.UnhandledException("error.ErrorDetails is null");
+                        var errors = powerShellInstance.Streams.Error.ReadAll();
+                        if (errors != null)
+                        {
+                            foreach (var error in errors)
+                            {
+                                if (error.ErrorDetails == null)
+                                    DynamicPowershellApiEvents.Raise.UnhandledException("error.ErrorDetails is null");
 
-								string errorDetails = error.ErrorDetails != null ? error.ErrorDetails.Message : String.Empty;
-								string scriptStack = error.ScriptStackTrace ?? String.Empty;
-								string commandPath = error.InvocationInfo.PSCommandPath ?? String.Empty;
+                                string errorDetails = error.ErrorDetails != null ? error.ErrorDetails.Message : String.Empty;
+                                string scriptStack = error.ScriptStackTrace ?? String.Empty;
+                                string commandPath = error.InvocationInfo.PSCommandPath ?? String.Empty;
 
-								if (error.ScriptStackTrace == null)
-									DynamicPowershellApiEvents.Raise.UnhandledException("error.ScriptStackTrace is null");
+                                if (error.ScriptStackTrace == null)
+                                    DynamicPowershellApiEvents.Raise.UnhandledException("error.ScriptStackTrace is null");
 
-								if (error.InvocationInfo == null)
-									DynamicPowershellApiEvents.Raise.UnhandledException("error.InvocationInfo is null");
-								else
-								{
-									if (error.InvocationInfo.PSCommandPath == null)
-										DynamicPowershellApiEvents.Raise.UnhandledException("error.InvocationInfo.PSCommandPath is null");
-								}
+                                if (error.InvocationInfo == null)
+                                    DynamicPowershellApiEvents.Raise.UnhandledException("error.InvocationInfo is null");
+                                else
+                                {
+                                    if (error.InvocationInfo.PSCommandPath == null)
+                                        DynamicPowershellApiEvents.Raise.UnhandledException("error.InvocationInfo.PSCommandPath is null");
+                                }
 
-								if (error.Exception == null)
-									DynamicPowershellApiEvents.Raise.UnhandledException("error.Exception is null");
+                                if (error.Exception == null)
+                                    DynamicPowershellApiEvents.Raise.UnhandledException("error.Exception is null");
 
-								DynamicPowershellApiEvents.Raise.PowerShellError(
-									errorDetails, 
-									scriptStack, 
-									commandPath,
-									error.InvocationInfo.ScriptLineNumber);
+                                DynamicPowershellApiEvents.Raise.PowerShellError(
+                                    errorDetails,
+                                    scriptStack,
+                                    commandPath,
+                                    error.InvocationInfo.ScriptLineNumber);
 
-								runtimeErrors.Add(new PowerShellException
-									{
-										StackTrace = scriptStack,
-										ErrorMessage = errorDetails,
-										LineNumber = error.InvocationInfo != null ? error.InvocationInfo.ScriptLineNumber : 0,
-										ScriptName = filename
-									});
+                                runtimeErrors.Add(new PowerShellException
+                                {
+                                    StackTrace = scriptStack,
+                                    ErrorMessage = errorDetails,
+                                    LineNumber = error.InvocationInfo != null ? error.InvocationInfo.ScriptLineNumber : 0,
+                                    ScriptName = filename
+                                });
 
-								if (error.Exception != null)
-								{
-									sb.Append(String.Format("PowerShell Exception {0} : {1}", error.Exception.Message, error.Exception.StackTrace));
-								}
+                                if (error.Exception != null)
+                                {
+                                    sb.Append(String.Format("PowerShell Exception {0} : {1}", error.Exception.Message, error.Exception.StackTrace));
+                                }
 
-								sb.Append(String.Format("Error {0}", error.ScriptStackTrace));
-							}
-						}
-						else
-						{							
-							sb.Append(sMessage);
-						}
+                                sb.Append(String.Format("Error {0}", error.ScriptStackTrace));
+                            }
+                        }
+                        else
+                        {
+                            sb.Append(sMessage);
+                        }
 
-						DynamicPowershellApiEvents.Raise.PowerShellScriptFinalised(String.Format("An error was rasied {0}", sb));
+                        DynamicPowershellApiEvents.Raise.PowerShellScriptFinalised(String.Format("An error was rasied {0}", sb));
 
-						throw new PowerShellExecutionException(sb.ToString())
-						{
-							Exceptions = runtimeErrors,
-							LogTime = DateTime.Now
-						};
-					}
+                        throw new PowerShellExecutionException(sb.ToString())
+                        {
+                            Exceptions = runtimeErrors,
+                            LogTime = DateTime.Now
+                        };
+                    }
 
-					var psGood = new PowershellReturn
-					{
-						PowerShellReturnedValidData = true,
-						ActualPowerShellData = sMessage
-					};
+                    var psGood = new PowershellReturn
+                    {
+                        PowerShellReturnedValidData = true,
+                        ActualPowerShellData = sMessage
+                    };
 
-					DynamicPowershellApiEvents.Raise.PowerShellScriptFinalised(String.Format("The powershell returned the following {0}", psGood.ActualPowerShellData));
+                    DynamicPowershellApiEvents.Raise.PowerShellScriptFinalised(String.Format("The powershell returned the following {0}", psGood.ActualPowerShellData));
 
-					return Task.FromResult(psGood);
-				}
+                    return Task.FromResult(psGood);
+                }
 			}
 			catch (Exception runnerException)
 			{

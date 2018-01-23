@@ -10,15 +10,17 @@ namespace DynamicPowerShellApi.Configuration
 	/// </summary>
 	public class ParameterCollection : ConfigurationElementCollection, IEnumerable<Parameter>
 	{
-		/// <summary>
-		/// Creates a new element.
-		/// </summary>
-		/// <returns>
-		/// The <see cref="ConfigurationElement"/>.
-		/// </returns>
-		protected override ConfigurationElement CreateNewElement()
+        //internal WebMethod Parent { get; set; }
+
+        /// <summary>
+        /// Creates a new element.
+        /// </summary>
+        /// <returns>
+        /// The <see cref="ConfigurationElement"/>.
+        /// </returns>
+        protected override ConfigurationElement CreateNewElement()
 		{
-			return new Parameter();
+			return new Parameter ();
 		}
 
 		/// <summary>

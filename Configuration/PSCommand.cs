@@ -4,16 +4,32 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Schema;
+using System.Net.Http;
 
 namespace DynamicPowerShellApi.Configuration
 {
     public class PSCommand
     {
-        //Name of command
-        public string Name { get; set; }
-
-        //Name of the api on which it depends
+ 
+        /// <summary>
+        /// Name of the api on which it depends
+        /// </summary>
         public string ApiName { get; set; }
+
+        /// <summary>
+        /// Name of command
+        /// </summary>
+        public string WebMethodName { get; set; }
+
+        /// <summary>	
+        /// 	Run this command as a job? I.e. respond with a Job ID. </summary>
+        /// <value>	true if as job, false if not. </value>
+        public bool AsJob { get; set; }
+
+        /// <summary>
+        /// Gets the snap in.
+        /// </summary>
+        public string Snapin { get; set; }
 
         //Synopsis of Powershell command (from Powershell Help)
         public string Synopsis { get; set; }
@@ -21,23 +37,41 @@ namespace DynamicPowerShellApi.Configuration
         //Synopsis of Powershell command (from Powershell Help)
         public string Description { get; set; }
 
-        //Name of PowerShell Command to will be executed
+        //Name of PowerShell command to will be executed
         public string CommandName { get; set; }
 
+        //Module that must be loaded before running the command
+        public string Module { get; set; }
+        
         // Module name of Command
         public string ModuleName { get; set; }
 
         //Noun Name of PowerShell Command (w/o verb)
         //public string Noun { get; set; }
 
+        /// <summary>
+        /// Links in PowerShell script
+        /// </summary>
         public string[] Links { get; set; }
 
-        //Rest method recommended to use
+        /// <summary>
+        /// Uri to acces at this Command
+        /// </summary>
+        public Uri Uri { get; set; }
+
+        /// <summary>
+        /// Http method will be used to call this command (get, put, post, ...)
+        /// </summary>
         public RestMethod RestMethod;
 
+        /// <summary>
+        /// Name's type of return value
+        /// </summary>
         public string[] OutTypeName { get; set; }
 
-
+        /// <summary>
+        /// List of parameters for this command
+        /// </summary>
         public List<PSParameter> Parameters { get; set; } = new List<PSParameter>();
 
 
@@ -62,10 +96,14 @@ namespace DynamicPowerShellApi.Configuration
         }
 
 
-
-        public string GetRoutePath(string rootApiPath)
+        /// <summary>
+        /// Get url path of this command (first part)
+        /// </summary>
+        /// <param name="rootApiPath"></param>
+        /// <returns></returns>
+        public string GetRoutePath()
         {
-            string route = string.Format("{0}/{1}/{2}", rootApiPath, ApiName, Name);
+            string route = Uri.ToString(); // string.Format("{0}/{1}/{2}", rootApiPath, ApiName, Name);
 
             Parameters.Where(x => x.Location == RestLocation.Path)
                       .OrderBy(x => x.Position)
@@ -76,6 +114,10 @@ namespace DynamicPowerShellApi.Configuration
             return route;
         }
 
+        /// <summary>
+        /// Get query string format of this command
+        /// </summary>
+        /// <returns></returns>
         public string GetQueryString()
         {
             var paz = Parameters.Where(x => x.Location == RestLocation.Query)
@@ -89,6 +131,10 @@ namespace DynamicPowerShellApi.Configuration
                 return "";
         }
 
+        /// <summary>
+        /// Get request content type (text/plain or application/json)
+        /// </summary>
+        /// <returns></returns>
         public string GetRequestContentType()
         {
             var paz = Parameters.Where(x => x.Location == RestLocation.Body).Select(x => x.JsonType).ToArray();

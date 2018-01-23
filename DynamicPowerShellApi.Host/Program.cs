@@ -129,8 +129,9 @@ namespace DynamicPowerShellApi.Host
 				Console.ReadLine();
 				return -1;
 			}
-			Console.WriteLine("To get server status, make a request to : {0}", Constants.StatusUrlPath);
-			Console.ReadLine();
+			Console.WriteLine("To get server status, make a request to : {1}{0}", Constants.StatusUrlPath, Startup.BaseUrl);
+
+            Console.ReadLine();
 
 			// Raise a stop service
 			DynamicPowershellApiEvents.Raise.ApiStop();
