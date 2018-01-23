@@ -143,13 +143,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuthorizeIfEnabledAttribute.cs" />
+    <Compile Include="Configuration\HttpMethodConverter.cs" />
     <Compile Include="Configuration\PSCommand.cs" />
     <Compile Include="Configuration\PSParameter.cs" />
     <Compile Include="Configuration\ApiPath.cs" />
     <Compile Include="Configuration\Authentication.cs" />
     <Compile Include="Configuration\JobStoreConfiguration.cs" />
     <Compile Include="Configuration\PSHelpInfo.cs" />
-    <Compile Include="Configuration\PSValidateType.cs" />
+    <Compile Include="JsonValidate.cs" />
     <Compile Include="Configuration\RestMethod.cs" />
     <Compile Include="Configuration\RestLocation.cs" />
     <Compile Include="Configuration\WebApiCollection.cs" />
@@ -190,6 +191,7 @@
     <Compile Include="SolutionAssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="ScriptRepository\PSClassSample.psm1" />
     <None Include="Aperture.snk" />
     <None Include="App.config">
       <SubType>Designer</SubType>
@@ -198,7 +200,7 @@
     <Content Include="ScriptRepository\Example.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="ScriptRepository\PSClassSample.psm1">
+    <Content Include="ScriptRepository\DemoAnimal.psm1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <None Include="_EventSourceUsersGuide.docx" />
