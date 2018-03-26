@@ -367,7 +367,7 @@ namespace DynamicPowerShellApi.Controllers
                 if (!asJob)
                 {
                     PowershellReturn output =
-                        await _powershellRunner.ExecuteAsync(psCommand.CommandName, psCommand.Snapin, psCommand.Module, inParams, asJob);
+                        await _powershellRunner.ExecuteAsync(psCommand.Name, psCommand.Snapin, psCommand.Module, inParams, asJob);
 
                     JToken token = string.IsNullOrWhiteSpace(output.ActualPowerShellData)
                         ? new JObject()
@@ -401,7 +401,7 @@ namespace DynamicPowerShellApi.Controllers
                             {
                                 Task<PowershellReturn> goTask =
                                 _powershellRunner.ExecuteAsync(
-                                        psCommand.CommandName,
+                                        psCommand.Name,
                                         psCommand.Snapin,
                                         psCommand.Module,
                                         inParams,
@@ -436,7 +436,7 @@ namespace DynamicPowerShellApi.Controllers
                                     Exceptions = poException.Exceptions,
                                     LogTime = poException.LogTime,
                                     RequestAddress = requestedHost,
-                                    RequestMethod = psCommand.CommandName,
+                                    RequestMethod = psCommand.Name,
                                     RequestUrl = Request.RequestUri.ToString()
                                 };
                                 entry.SetActivityId(activityId);
@@ -485,7 +485,7 @@ namespace DynamicPowerShellApi.Controllers
                     Exceptions = poException.Exceptions,
                     LogTime = poException.LogTime,
                     RequestAddress = String.Empty, // TODO: Find a way of getting the request host.
-                    RequestMethod = psCommand.CommandName,
+                    RequestMethod = psCommand.Name,
                     RequestUrl = Request.RequestUri.ToString()
                 };
                 entry.SetActivityId(activityId);
@@ -520,7 +520,7 @@ namespace DynamicPowerShellApi.Controllers
                     },
                     LogTime = DateTime.Now,
                     RequestAddress = String.Empty, // TODO: Find a way of getting the request host.
-                    RequestMethod = psCommand.CommandName,
+                    RequestMethod = psCommand.Name,
                     RequestUrl = Request.RequestUri.ToString()
                 };
                 entry.SetActivityId(activityId);

@@ -123,11 +123,11 @@ namespace DynamicPowerShellApi.Configuration
 		/// Gets the parameters.
 		/// </summary>
 		[ConfigurationProperty("Parameters")]
-		public ParameterCollection Parameters
+		public WebParameterCollection Parameters
 		{
 			get
 			{
-				return (ParameterCollection)this["Parameters"];
+				return (WebParameterCollection)this["Parameters"];
 			}
 		}
 
@@ -143,10 +143,22 @@ namespace DynamicPowerShellApi.Configuration
 			}
 		}
 
+        private PSCommand apiCommand;
+
         /// <summary>
         /// Get PowerShell definition.
         /// </summary>
-        public PSCommand ApiCommand { get; set; }
+        public PSCommand GetApiCommand()
+        {
+            return apiCommand;
+        }
 
+        /// <summary>
+        /// Get PowerShell definition.
+        /// </summary>
+        public void SetApiCommand(PSCommand value)
+        {
+            apiCommand = value;
+        }
     }
 }

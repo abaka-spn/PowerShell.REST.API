@@ -29,7 +29,6 @@ namespace DynamicPowerShellApi.Configuration
         // Public Properties
         //public string WebMethodName { get { return _cmdConfig.Name; } }
 
-
         // Private Properties
         WebMethod _cmdConfig { get; set; }
 
@@ -78,7 +77,7 @@ namespace DynamicPowerShellApi.Configuration
             //UriBuilder uriBuilder = new UriBuilder(_parentUri.ToString());
             //uriBuilder.Path += _cmdConfig.Name;
 
-            var psCmd = new PSCommand
+            var psCmd = new PSCommand(_cmdHelp.Name)
             {
                 WebMethodName = _cmdConfig.Name,
                 AsJob = _cmdConfig.AsJob,
@@ -88,7 +87,7 @@ namespace DynamicPowerShellApi.Configuration
                 Uri = new Uri(_parentUri.ToString() + "/" + _cmdConfig.Route, UriKind.Relative),
                 Module = _module,
                 ModuleName = _cmdHelp.ModuleName ?? "",
-                CommandName = _cmdHelp.Name,
+                //Name = _cmdHelp.Name,
                 Synopsis = _cmdHelp.Synopsis ?? "",
                 Description = _cmdHelp.description == null ? "" : _cmdHelp.description[0].Text,
                 OutTypeName = _cmdInfo.OutputType.Select(x => x.Name.ToString()).ToArray(),
@@ -108,8 +107,8 @@ namespace DynamicPowerShellApi.Configuration
 
             if (_cmdHelp.Parameters == null)
             {
-                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Help of command {0} is malformed.", psCmd.CommandName));
-                throw new MissingParametersException(String.Format("Help of command {0} is malformed.", psCmd.CommandName));
+                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Help of command {0} is malformed.", psCmd.Name));
+                throw new MissingParametersException(String.Format("Help of command {0} is malformed.", psCmd.Name));
 
             }
 
@@ -149,63 +148,14 @@ namespace DynamicPowerShellApi.Configuration
                     IsSwitch = paramMeta.SwitchParameter,
 
                     // from CommandInfo
-                    Required = paramAttrib.Mandatory,
-                    HelpMessage = paramAttrib.HelpMessage,
-                    Hidden = paramAttrib.DontShow
+                    //Required = paramAttrib.Mandatory,
+                    //HelpMessage = paramAttrib.HelpMessage,
+                    //Hidden = paramAttrib.DontShow
                 };
                 //position = psParam.Position;
 
-                if (paramMeta.Attributes.OfType<ValidateNotNullOrEmptyAttribute>().FirstOrDefault() != null)
-                {
-                    psParam.AllowEmpty = false;
-                    psParam.AllowEmpty = false;
-                }
-                else
-                {
-                    psParam.AllowNull = paramMeta.Attributes.OfType<AllowNullAttribute>().FirstOrDefault() != null;
-                    psParam.AllowEmpty = (paramMeta.Attributes.OfType<AllowEmptyStringAttribute>().FirstOrDefault() != null) ||
-                                         (paramMeta.Attributes.OfType<AllowEmptyCollectionAttribute>().FirstOrDefault() != null);
-                }
-
-                paramMeta.Attributes.OfType<ValidateCountAttribute>()
-                                .ToList()
-                                .ForEach(
-                                    x =>
-                                    {
-                                        psParam.AddValidate(JsonValidate.MinItems, x.MinLength);
-                                        psParam.AddValidate(JsonValidate.MaxItems, x.MaxLength);
-                                    });
-
-                paramMeta.Attributes.OfType<ValidateLengthAttribute>()
-                                .ToList()
-                                .ForEach(
-                                    x =>
-                                    {
-                                        psParam.AddValidate(JsonValidate.MinLength, (long)x.MinLength);
-                                        psParam.AddValidate(JsonValidate.MaxLength, (long)x.MaxLength);
-                                    });
-
-                paramMeta.Attributes.OfType<ValidatePatternAttribute>()
-                                .ToList()
-                                .ForEach(
-                                    x => psParam.AddValidate(JsonValidate.Pattern, x.RegexPattern)
-                                );
-
-                paramMeta.Attributes.OfType<ValidateRangeAttribute>()
-                                .ToList()
-                                .ForEach(
-                                    x =>
-                                    {
-                                        psParam.AddValidate(JsonValidate.Minimum, double.Parse(x.MinRange.ToString()));
-                                        psParam.AddValidate(JsonValidate.Maximum, double.Parse(x.MaxRange.ToString()));
-                                    });
-
-                paramMeta.Attributes.OfType<ValidateSetAttribute>()
-                                .ToList()
-                                .ForEach(
-                                    x => psParam.AddValidate(JsonValidate.EnumSet, x.ValidValues.ToArray())
-                                );
-
+                // Add validation attribute from CommandInfo
+                psParam.AddValidate(paramMeta.Attributes.ToArray());
 
                 // Parameter location
                 if (paramConfig?.Location == null)
@@ -237,7 +187,7 @@ namespace DynamicPowerShellApi.Configuration
                 // Add new parameter in collection
                 psCmd.Parameters.Add(psParam);
             }
-
+            
             return psCmd;
         }
 

@@ -8,9 +8,8 @@ using System.Net.Http;
 
 namespace DynamicPowerShellApi.Configuration
 {
-    public class PSCommand
+    public class PSCommand : PSModel
     {
- 
         /// <summary>
         /// Name of the api on which it depends
         /// </summary>
@@ -38,7 +37,7 @@ namespace DynamicPowerShellApi.Configuration
         public string Description { get; set; }
 
         //Name of PowerShell command to will be executed
-        public string CommandName { get; set; }
+        //public string Name { get; set; }
 
         //Module that must be loaded before running the command
         public string Module { get; set; }
@@ -70,31 +69,12 @@ namespace DynamicPowerShellApi.Configuration
         public string[] OutTypeName { get; set; }
 
         /// <summary>
-        /// List of parameters for this command
+        /// Constructor
         /// </summary>
-        public List<PSParameter> Parameters { get; set; } = new List<PSParameter>();
-
-
-        /// <summary>
-        /// Gets all parameters defined in config file.
-        /// </summary>
-        public List<PSParameter> GetParametersRequired()
+        /// <param name="Name"></param>
+        public PSCommand(string Name) : base(Name)
         {
-            return Parameters.Where(x => x.Required)
-                             .OrderBy(x => x.Position)
-                             .ToList();
         }
-
-        /// <summary>
-        /// Gets all parameters for specific location.
-        /// </summary>
-        public List<PSParameter> GetParametersByLocation(RestLocation location)
-        {
-            return Parameters.Where(x => x.Location == location)
-                             .OrderBy(x => x.Position)
-                             .ToList();
-        }
-
 
         /// <summary>
         /// Get url path of this command (first part)

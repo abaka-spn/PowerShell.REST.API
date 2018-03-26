@@ -16,7 +16,7 @@ namespace DynamicPowerShellApi
         {
             get
             {
-                if (_openApiDocument == null)
+                //if (_openApiDocument == null)
                     _openApiDocument = BuildSpecification();
 
                 return _openApiDocument;
@@ -62,10 +62,103 @@ namespace DynamicPowerShellApi
                     }
             };
 
+
+            openApiDocument.Components = new OpenApiComponents
+            {
+                Schemas =
+                        {
+                            ["ErrorModel"] = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties =
+                                {
+                                    ["code"] = new OpenApiSchema
+                                    {
+                                        Type = "integer",
+                                        Minimum = 100,
+                                        Maximum = 600
+                                    },
+                                    ["message"] = new OpenApiSchema
+                                    {
+                                        Type = "string"
+                                    }
+                                },
+                                Required =
+                                {
+                                    "message",
+                                    "code"
+                                }
+                            },
+                            ["ExtendedErrorModel"] = new OpenApiSchema
+                            {
+                                AllOf =
+                                {
+                                    new OpenApiSchema
+                                    {
+                                        Reference = new OpenApiReference
+                                        {
+                                            Type = ReferenceType.Schema,
+                                            Id = "ErrorModel"
+                                        },
+                                        // Schema should be dereferenced in our model, so all the properties
+                                        // from the ErrorModel above should be propagated here.
+                                        Type = "object",
+                                        Properties =
+                                        {
+                                            ["code"] = new OpenApiSchema
+                                            {
+                                                Type = "integer",
+                                                Minimum = 100,
+                                                Maximum = 600
+                                            },
+                                            ["message"] = new OpenApiSchema
+                                            {
+                                                Type = "string"
+                                            }
+                                        },
+                                        Required =
+                                        {
+                                            "message",
+                                            "code"
+                                        }
+                                    },
+                                    new OpenApiSchema
+                                    {
+                                        Type = "object",
+                                        Required = {"rootCause"},
+                                        Properties =
+                                        {
+                                            ["rootCause"] = new OpenApiSchema
+                                            {
+                                                Type = "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+            };
+
+
+            if (PSModel.AllModels.Count > 0)
+            {
+                //var openApiComponents = new Dictionary<string, OpenApiComponents>();
+
+                var openApiComponents = new OpenApiComponents();
+
+                foreach (var psModel in PSModel.AllModels.Values)
+                {
+                    openApiComponents.Schemas.Add(psModel.Name, psModel.GetOpenApiSchema());
+                }
+
+                openApiDocument.Components = openApiComponents;
+            }
+
+
             List<PSCommand> AppCommands = WebApiConfiguration.Instance
                 .Apis.ToList()
                 .SelectMany(x => x.WebMethods)
-                .Select(x => x.ApiCommand)
+                .Select(x => x.GetApiCommand())
                 .ToList();
 
             if (AppCommands.Count > 0)
@@ -115,59 +208,37 @@ namespace DynamicPowerShellApi
                     };
 
 
-                    // all Parameters, except by body
+                    // all Parameters, except body
                     var openApiNotBodyParameters = new List<OpenApiParameter>();
                     foreach (var apiParameter in apiCmd.Parameters.Where(x => x.Location != RestLocation.Body))
                     {
                         openApiNotBodyParameters.Add
                         (
-                            new OpenApiParameter
-                            {
-                                Name = apiParameter.Name,
-                                Description = apiParameter.Description,
-                                AllowEmptyValue = apiParameter.AllowEmpty,
-                                Required = apiParameter.Required,
-                                In = (ParameterLocation)apiParameter.Location,
-                                Schema = apiParameter.GetSchemaOpenApiSchema()
-                            }
+                            apiParameter.GetOpenApiParameter()
                         );
-
                     }
                     if (openApiNotBodyParameters.Count > 0)
                         openApiDocument.Paths[routePath].Operations[operationType].Parameters = openApiNotBodyParameters;
 
 
                     // all body parameters
-                    var openApiBodyProperties = new Dictionary<string, OpenApiSchema>();
-                    bool required = false;
-                    foreach (var apiParameter in apiCmd.Parameters.Where(x => x.Location == RestLocation.Body))
+                    var openApiBodySchema = apiCmd.GetOpenApiSchema();
+                    if (openApiBodySchema.Properties.Count > 0)
                     {
-                        openApiBodyProperties.Add
-                        (
-                            apiParameter.Name,
-                            apiParameter.GetSchemaOpenApiSchema()
-                        );
-
-                        required = required || apiParameter.Required;
-                    }
-
-                    if (openApiBodyProperties.Count > 0)
                         openApiDocument.Paths[routePath].Operations[operationType].RequestBody = new OpenApiRequestBody()
                         {
-                            Required = required,
                             Content = new Dictionary<string, OpenApiMediaType>()
                                 {
                                     {
-                                        "application/json", new OpenApiMediaType()
+                                        "application/json",
+                                        new OpenApiMediaType()
                                         {
-                                            Schema = new OpenApiSchema() { Type = "object",Properties = openApiBodyProperties}
+                                            Schema = openApiBodySchema
                                         }
                                     }
                                 }
                         };
-
-
-
+                    }
                 }
             }
 

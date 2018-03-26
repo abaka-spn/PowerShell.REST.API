@@ -1,8 +1,6 @@
-
 class Animal
 {
-
-    [System.ComponentModel.DefaultValueAttribute("Dog")]
+    #[System.ComponentModel.DefaultValueAttribute("Dog")]
 	[Parameter(HelpMessage="Breed of Animal",Mandatory=$true)]
 	[string]$Breed
 
@@ -45,7 +43,7 @@ class Animal
     [string]$PrivateInfo
 
 
-    static [Animal]Sample()
+    static [Animal]Example()
     {
         return [Animal]@{
             FirstName = "Sébastien"

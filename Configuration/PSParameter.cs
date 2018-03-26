@@ -9,7 +9,8 @@ using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Any;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Utilities;
-
+using System.Management.Automation;
+using System.Collections.ObjectModel;
 
 namespace DynamicPowerShellApi.Configuration
 {
@@ -102,6 +103,7 @@ namespace DynamicPowerShellApi.Configuration
             set
             {
                 _type = value;
+                IsArray = _type.IsArray;
 
                 //JSchemaType schemaType = JSchemaType.None;
                 if (_type.IsArray)
@@ -109,30 +111,49 @@ namespace DynamicPowerShellApi.Configuration
                     _jsonSchema.Type = JSchemaType.Array;
 
                     var elementType = _type.GetElementType();
-                    if (JSchemaTypeMap.ContainsKey(elementType))
+                    this.TypeName = elementType.Name;
+
+                    IsObject = !JSchemaTypeMap.ContainsKey(elementType);
+
+                    if (IsObject)
                     {
-                        _jsonSchema.Items.Add(new JSchema() { Type = JSchemaTypeMap[elementType] });
+                        _jsonSchema.Items.Add(new JSchema() { Type = JSchemaType.Object });
+
+                        this.HasModel = PSModel.AddModel(elementType) != null;
                     }
                     else
                     {
-                        _jsonSchema.Items.Add(new JSchema() { Type = JSchemaType.Object });
+                        _jsonSchema.Items.Add(new JSchema() { Type = JSchemaTypeMap[elementType] });
                     }
-                }
-                else if (JSchemaTypeMap.ContainsKey(_type))
-                {
-                    _jsonSchema.Type = JSchemaTypeMap[_type];
+
+
                 }
                 else
                 {
-                    _jsonSchema.Type = JSchemaType.Object;
+                    this.TypeName = _type.Name;
+                    IsObject = !JSchemaTypeMap.ContainsKey(_type);
+                    if (IsObject)
+                    {
+                        //_jsonSchema.Type = JSchemaType.Object;
+
+                        //JSchemaGenerator generator = new JSchemaGenerator();
+                        //_jsonSchema = generator.Generate(_type);
+                        _jsonSchema.Type = JSchemaType.Object;
+
+                        this.HasModel = PSModel.AddModel(_type) != null;
+                    }
+                    else
+                    {
+
+                        _jsonSchema.Type = JSchemaTypeMap[_type];
+
+                    }
                 }
             }
         }
 
-        /// <summary>
-        /// Name of .Net type
-        /// </summary>
-        public string TypeName { get { return _type.Name; } }
+        public string TypeName { get; private set; }
+
 
         /* JSON Schema Data Types 
            https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.0.md#dataTypeFormat
@@ -161,6 +182,21 @@ namespace DynamicPowerShellApi.Configuration
                 return (JSchemaType)_jsonSchema.Type;
             }
         }
+
+        /// <summary>
+        /// Define if is a object type
+        /// </summary>
+        public bool IsObject { get; private set; } //=> JsonType == JSchemaType.Object;
+
+        /// <summary>
+        /// Define if is a array type
+        /// </summary>
+        public bool IsArray { get; private set; } 
+
+        /// <summary>
+        /// Define if is reference 
+        /// </summary>
+        public bool HasModel { get; private set; }
 
         /// <summary>
         /// Position of parameter in URL for path location
@@ -201,7 +237,7 @@ namespace DynamicPowerShellApi.Configuration
         /// <summary>
         /// Location of parameter in rest query (body, query, path, ...)
         /// </summary>
-        public RestLocation Location { get; set; } = Constants.DefaultParameterLocation;
+        public RestLocation Location { get; set; } = RestLocation.Body;
 
         public Dictionary<JsonValidate, object> Validates = new Dictionary<JsonValidate, object>();
 
@@ -275,6 +311,77 @@ namespace DynamicPowerShellApi.Configuration
 
         }
 
+
+        public void AddValidate(Object[] customAttributes)
+        {
+            if (customAttributes.OfType<ValidateNotNullOrEmptyAttribute>().FirstOrDefault() != null)
+            {
+                this.AllowEmpty = false;
+                this.AllowEmpty = false;
+            }
+            else
+            {
+                this.AllowNull = customAttributes.OfType<AllowNullAttribute>().FirstOrDefault() != null;
+                this.AllowEmpty = (customAttributes.OfType<AllowEmptyStringAttribute>().FirstOrDefault() != null) ||
+                                     (customAttributes.OfType<AllowEmptyCollectionAttribute>().FirstOrDefault() != null);
+            }
+
+            customAttributes.OfType<ValidateCountAttribute>()
+                            .ToList()
+                            .ForEach(
+                                x =>
+                                {
+                                    this.AddValidate(JsonValidate.MinItems, x.MinLength);
+                                    this.AddValidate(JsonValidate.MaxItems, x.MaxLength);
+                                });
+
+            customAttributes.OfType<ValidateLengthAttribute>()
+                            .ToList()
+                            .ForEach(
+                                x =>
+                                {
+                                    this.AddValidate(JsonValidate.MinLength, (long)x.MinLength);
+                                    this.AddValidate(JsonValidate.MaxLength, (long)x.MaxLength);
+                                });
+
+            customAttributes.OfType<ValidatePatternAttribute>()
+                            .ToList()
+                            .ForEach(
+                                x => this.AddValidate(JsonValidate.Pattern, x.RegexPattern)
+                            );
+
+            customAttributes.OfType<ValidateRangeAttribute>()
+                            .ToList()
+                            .ForEach(
+                                x =>
+                                {
+                                    this.AddValidate(JsonValidate.Minimum, double.Parse(x.MinRange.ToString()));
+                                    this.AddValidate(JsonValidate.Maximum, double.Parse(x.MaxRange.ToString()));
+                                });
+
+            customAttributes.OfType<ValidateSetAttribute>()
+                            .ToList()
+                            .ForEach(
+                                x => this.AddValidate(JsonValidate.EnumSet, x.ValidValues.ToArray())
+                            );
+
+            customAttributes.OfType<ParameterAttribute>()
+                            .ToList()
+                            .ForEach(
+                                x =>
+                                {
+                                    this.Required = x.Mandatory;
+                                    this.HelpMessage = x.HelpMessage;
+                                    this.Hidden = x.DontShow;
+                                    this.Position = x.Position;
+                                });
+
+
+
+
+        }
+
+
         /// <summary>
         /// Initialize PSParamter object
         /// </summary>
@@ -302,8 +409,8 @@ namespace DynamicPowerShellApi.Configuration
         public JSchema GetJsonSchema()
         {
             _jsonSchema.Description = Description;
-            _jsonSchema.Default = DefaultValue == null ? null : JToken.FromObject(DefaultValue);
-
+            _jsonSchema.Default = this.DefaultValue == null ? null : JToken.FromObject(this.DefaultValue);
+            _jsonSchema.Title = this.HelpMessage == "" ? null : this.HelpMessage;
             return _jsonSchema;
         }
 
@@ -311,35 +418,109 @@ namespace DynamicPowerShellApi.Configuration
         /// Get parameter schema OpenApi schema in Open API format
         /// </summary>
         /// <returns></returns>
-        public OpenApiSchema GetSchemaOpenApiSchema()
+        public OpenApiSchema GetOpenApiSchema()
         {
             var jsonSchema = GetJsonSchema();
 
-            IOpenApiAny defaultValue = null;
-            if (DefaultValue != null && ConvertObjectToOpenApi.ContainsKey(DefaultValue.GetType()))
-                defaultValue = ConvertObjectToOpenApi[DefaultValue.GetType()](DefaultValue);
-
-            return new OpenApiSchema
+            OpenApiSchema openApiSchema = ConvertToOpenApiSchema(jsonSchema);
+            foreach (var proJsonSchema in jsonSchema.Properties)
             {
-                Description = jsonSchema.Description,
-                Type = jsonSchema.Type.ToString().ToLower(),
-                Items = jsonSchema.Items.Select(x => new OpenApiSchema { Type = x.Type.ToString().ToLower() }).FirstOrDefault(),
-                Default = defaultValue,
-                //MultipleOf = (decimal?)jsonSchema.MultipleOf; // -> N/A in PowerShell Attribute
-                Minimum = (decimal?)jsonSchema.Minimum, // -> ValidateRange
-                Maximum = (decimal?)jsonSchema.Maximum, // -> ValidateRange
-                //ExclusiveMinimum = (bool)jsonSchema.ExclusiveMinimum; // -> N/A in PowerShell Attribute
-                //ExclusiveMaximum = (bool)jsonSchema.ExclusiveMaximum; // -> N/A in PowerShell Attribute
-                MaxLength = (int?)jsonSchema.MaximumLength, // -> ValidateLength
-                MinLength = (int?)jsonSchema.MinimumLength, // -> ValidateLength
-                Pattern = jsonSchema.Pattern,      // -> ValidatePattern
-                MinItems = (int?)jsonSchema.MinimumItems,   // -> ValidateCount
-                MaxItems = (int?)jsonSchema.MaximumItems,   // -> ValidateCount
-                //UniqueItems = (bool)jsonSchema.UniqueItems; // -> N/A in PowerShell Attribute
-                //MaxProperties = (int?)jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
-                //MinProperties = (int?)jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
-                Enum = _jsonSchema.Enum.Values<string>().ToList().Select(x => (IOpenApiAny)new OpenApiString(x)).ToList() // -> ValidateSet
-            };
+                OpenApiSchema proOpenApiSchema = ConvertToOpenApiSchema(proJsonSchema.Value);
+                openApiSchema.Properties.Add(proJsonSchema.Key, proOpenApiSchema);
+
+            }
+            return openApiSchema;
+
+        }
+
+        public OpenApiParameter GetOpenApiParameter()
+        {
+            if (IsObject)
+            {
+                return
+                    new OpenApiParameter
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.Schema,
+                            Id = TypeName
+                        }
+                    };
+            }
+            else
+            {
+                return 
+                    new OpenApiParameter
+                    {
+                        Name = Name,
+                        Description = Description,
+                        AllowEmptyValue = AllowEmpty,
+                        Required = Required,
+                        In = (ParameterLocation)Location,
+                        Schema = GetOpenApiSchema()
+                    };
+            }
+        }
+
+        private OpenApiSchema ConvertToOpenApiSchema(JSchema jsonSchema)
+        {
+
+            IOpenApiAny defaultValue2 = null;
+
+            //            if (jsonSchema.Default != null && ConvertObjectToOpenApi.ContainsKey(DefaultValue.GetType()))
+            //              defaultValue2 = ConvertObjectToOpenApi[DefaultValue.GetType()](DefaultValue);
+            if (this.HasModel)
+            {
+                var objectSchema = new OpenApiSchema
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.Schema,
+                        Id = this.TypeName
+                    }
+                };
+
+                if (this.IsArray)
+                {
+                    return new OpenApiSchema
+                    {
+                        Type = JSchemaType.Array.ToString().ToLower(),
+                        Items = objectSchema
+                    };
+                }
+                else
+                {
+                    return objectSchema;
+
+                }
+            }
+            else
+            {
+                return new OpenApiSchema
+                {
+                    Description = jsonSchema.Description,
+                    Type = jsonSchema.Type.ToString().ToLower(),
+                    Items = jsonSchema.Items.Select(x => new OpenApiSchema { Type = x.Type.ToString().ToLower() }).FirstOrDefault(),
+                    Default = defaultValue2,
+                    //MultipleOf = (decimal?)jsonSchema.MultipleOf; // -> N/A in PowerShell Attribute
+                    Minimum = (decimal?)jsonSchema.Minimum, // -> ValidateRange
+                    Maximum = (decimal?)jsonSchema.Maximum, // -> ValidateRange
+                    //ExclusiveMinimum = (bool)jsonSchema.ExclusiveMinimum; // -> N/A in PowerShell Attribute
+                    //ExclusiveMaximum = (bool)jsonSchema.ExclusiveMaximum; // -> N/A in PowerShell Attribute
+                    MaxLength = (int?)jsonSchema.MaximumLength, // -> ValidateLength
+                    MinLength = (int?)jsonSchema.MinimumLength, // -> ValidateLength
+                    Pattern = jsonSchema.Pattern,      // -> ValidatePattern
+                    MinItems = (int?)jsonSchema.MinimumItems,   // -> ValidateCount
+                    MaxItems = (int?)jsonSchema.MaximumItems,   // -> ValidateCount
+                    //UniqueItems = (bool)jsonSchema.UniqueItems; // -> N/A in PowerShell Attribute
+                    //MaxProperties = (int?)jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
+                    //MinProperties = (int?)jsonSchema.MaximumProperties; // -> N/A in PowerShell Attribute
+                    Enum = _jsonSchema.Enum.Values<string>().ToList().Select(x => (IOpenApiAny)new OpenApiString(x)).ToList(), // -> ValidateSet
+                    Title = _jsonSchema.Title,
+                    Nullable = this.AllowNull,
+
+                };
+            }
         }
     }
 }

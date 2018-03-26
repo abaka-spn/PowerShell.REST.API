@@ -186,7 +186,7 @@
                     //Fill and Add Command informations to the instance
                     PSCommand psCommand = onePsHelpInfo.GetPSCommand();
 
-                    api.WebMethods[psCommand.WebMethodName].ApiCommand = psCommand;
+                    api.WebMethods[psCommand.WebMethodName].SetApiCommand(psCommand);
 
                     Routes[psCommand.RestMethod][psCommand.GetRoutePath().ToLower()] = psCommand;
 
