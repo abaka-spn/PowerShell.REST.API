@@ -24,6 +24,11 @@ namespace DynamicPowerShellApi.Owin
     using Microsoft.Owin.StaticFiles;
     using Microsoft.Owin.FileSystems;
     using Microsoft.Owin;
+    using Microsoft.Owin.Security.ApiKey;
+    using System.Threading.Tasks;
+    using System.Security.Claims;
+    using System.Collections.Generic;
+    using Microsoft.Owin.Security.ApiKey.Contexts;
 
     /// <summary>
     /// The startup.
@@ -50,7 +55,7 @@ namespace DynamicPowerShellApi.Owin
 			config.EnsureInitialized();
 
 			// If the config file specifies authentication, load up the certificates and use the JWT middleware.
-		    if (WebApiConfiguration.Instance.Authentication.Enabled)
+		    if (WebApiConfiguration.Instance.JwtAuthentication.Enabled)
 		    {
 		        X509Certificate2 cert = Certificate.ReadCertificate();
 
@@ -59,7 +64,7 @@ namespace DynamicPowerShellApi.Owin
 		            {
 		                AllowedAudiences = new[]
 		                {
-			                WebApiConfiguration.Instance.Authentication.Audience
+			                WebApiConfiguration.Instance.JwtAuthentication.Audience
 		                },
 		                IssuerSecurityTokenProviders =
 		                    new[]
@@ -70,6 +75,21 @@ namespace DynamicPowerShellApi.Owin
 		                AuthenticationMode = AuthenticationMode.Active
 		            });
 		    }
+
+            // If the config file specifies authentication, load up ApiKey middleware.
+            if (WebApiConfiguration.Instance.ApiKeyAuthentication.Enabled)
+            {
+                appBuilder.UseApiKeyAuthentication(new ApiKeyAuthenticationOptions()
+                {
+                    Header = WebApiConfiguration.Instance.ApiKeyAuthentication.Header ?? "Authorization",
+                    HeaderKey = WebApiConfiguration.Instance.ApiKeyAuthentication.HeaderKey ?? "ApiKey",
+                    Provider = new ApiKeyAuthenticationProvider()
+                    {
+                        OnValidateIdentity = Authentication.ValidateIdentity,
+                        OnGenerateClaims = Authentication.GenerateClaims
+                    }
+                });
+            }
 
             var options = new FileServerOptions
             {
@@ -82,7 +102,8 @@ namespace DynamicPowerShellApi.Owin
 
 
             appBuilder.UseAutofacMiddleware(container);
-    	    appBuilder.UseWebApi(config);
+
+            appBuilder.UseWebApi(config);
 /*
  * TO DO : Change the content of index.html to customize the Openapi specification URL 
             appBuilder.Map("/help", spa =>

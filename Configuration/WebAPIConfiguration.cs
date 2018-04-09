@@ -48,6 +48,19 @@
         }
 
         /// <summary>
+        /// Gets the Users.
+        /// </summary>
+        
+        [ConfigurationProperty("Users")]
+        public UserCollection Users
+        {
+            get
+            {
+                return (UserCollection)this["Users"];
+            }
+        }
+        
+        /// <summary>
         /// Gets the host address.
         /// </summary>
         [ConfigurationProperty("HostAddress", IsRequired = true)]
@@ -60,14 +73,26 @@
         }
 
         /// <summary>
-        /// Gets the authentication.
+        /// Gets the JWT authentication.
         /// </summary>
-        [ConfigurationProperty("Authentication", IsRequired = true)]
-        public Authentication Authentication
+        [ConfigurationProperty("JwtAuthentication", IsRequired = true)]
+        public JwtAuthentication JwtAuthentication
         {
             get
             {
-                return (Authentication)this["Authentication"];
+                return (JwtAuthentication)this["JwtAuthentication"];
+            }
+        }
+
+        /// <summary>
+        /// Gets the ApiKey authentication.
+        /// </summary>
+        [ConfigurationProperty("ApiKeyAuthentication", IsRequired = true)]
+        public ApiKeyAuthentication ApiKeyAuthentication
+        {
+            get
+            {
+                return (ApiKeyAuthentication)this["ApiKeyAuthentication"];
             }
         }
 
@@ -162,19 +187,19 @@
                 
                 Uri BaseUri = new Uri("/api/" + api.Name, UriKind.Relative);
 
-                List<PSHelpInfo> psHelpInfo;
+                List<PSLoader> psHelpInfo;
 
                 if (isModuleMode)
                 {
-                    psHelpInfo = PSHelpInfo.InvokePS(api.Module, api.WebMethods, BaseUri);
+                    psHelpInfo = PSLoader.InvokePS(api.Module, api.WebMethods, BaseUri);
                 }
                 else
                 {
-                    psHelpInfo = new List<PSHelpInfo>();
+                    psHelpInfo = new List<PSLoader>();
 
                     foreach (WebMethod webMethod in api.WebMethods)
                     {
-                        PSHelpInfo.InvokePS(webMethod.Module, new[] { webMethod }, BaseUri)
+                        PSLoader.InvokePS(webMethod.Module, new[] { webMethod }, BaseUri)
                                   .ForEach(x => psHelpInfo.Add(x));
                     }
                 }

@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Schema;
 using System.Net.Http;
+using System.Security.Claims;
+using System.Security.Principal;
 
 namespace DynamicPowerShellApi.Configuration
 {
@@ -69,12 +71,76 @@ namespace DynamicPowerShellApi.Configuration
         public string[] OutTypeName { get; set; }
 
         /// <summary>
+        /// Define if Anonymous users are allowed to launch this commmand.
+        /// </summary>
+        public bool AllowAnonymous { get; set; }
+
+        /// <summary>
+        /// Users allowed to launch this commmand.
+        /// </summary>
+        public string Users { get; set; }
+
+        /// <summary>
+        /// Roles allowed to launch this commmand.
+        /// </summary>
+        public string Roles { get; set; }
+
+  
+        /// <summary>
+        /// Name of the parameter that will be set with username.
+        /// </summary>
+        public string ParameterForUser { get; set; }
+
+        /// <summary>
+        /// Name of the parameter that will be set with roles list.
+        /// </summary>
+        public string ParameterForRoles { get; set; }
+
+        /// <summary>
+        /// Name of the parameter that will be set with claims list.
+        /// </summary>
+        public string ParameterForClaims { get; set; }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="Name"></param>
         public PSCommand(string Name) : base(Name)
         {
         }
+
+        /*
+         * Peut faire plus simple ;-)
+        public Claim[] Claims { get; set; } = new Claim[0];
+
+        public bool IsAuthorized(ClaimsIdentity Identity)
+        {
+            if (!Identity.IsAuthenticated)
+            {
+                return false;
+            }
+
+            if (this.Claims.Length == 0)
+                return true;
+
+            return Identity.Claims
+                            .FirstOrDefault(id =>
+                                            this.Claims
+                                                .FirstOrDefault(cmd =>
+                                                                cmd.Type == id.Type &&
+                                                                cmd.Value == id.Value
+                                                                ) != null
+                                           ) != null;
+
+            
+        }
+
+
+        public bool IsAuthorized(IPrincipal Principal)
+        {
+            return this.IsAuthorized(Principal.Identity as ClaimsIdentity);
+        }
+        */
 
         /// <summary>
         /// Get url path of this command (first part)

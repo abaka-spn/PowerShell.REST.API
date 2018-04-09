@@ -6,7 +6,7 @@
 	/// <summary>
 	/// The authentication.
 	/// </summary>
-	public class Authentication : ConfigurationElement
+	public class JwtAuthentication : ConfigurationElement
 	{
 		/// <summary>
 		/// Gets the store name.

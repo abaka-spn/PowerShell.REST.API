@@ -78,6 +78,7 @@
    <data name="errorMessage" inType="win:UnicodeString"/>
   </template>
   <template tid="PowerShellErrorArgs">
+   <data name="category" inType="win:UnicodeString"/>
    <data name="message" inType="win:UnicodeString"/>
    <data name="stackTrace" inType="win:UnicodeString"/>
    <data name="file" inType="win:UnicodeString"/>

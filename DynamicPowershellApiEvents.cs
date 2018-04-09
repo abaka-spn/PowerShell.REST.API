@@ -263,9 +263,9 @@
 				Level = EventLevel.Warning
 			)
 		]
-		public void PowerShellError(string message, string stackTrace, string file, int lineNumber)
+		public void PowerShellError(string category, string message, string stackTrace, string file, int lineNumber)
 		{
-			WriteEvent(Events.PowerShellError, message, stackTrace, file, lineNumber);
+			WriteEvent(Events.PowerShellError, category, message, stackTrace, file, lineNumber);
 		}
 
 		/// <summary>

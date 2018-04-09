@@ -130,6 +130,7 @@
     <Compile Include="..\SolutionAssemblyInfo.cs">
       <Link>SolutionAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Authentication.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
@@ -157,6 +158,10 @@
     <ProjectReference Include="..\DynamicPowerShellApi.csproj">
       <Project>{0e96dee8-3bd5-4396-8c84-52aaf60eb270}</Project>
       <Name>DynamicPowerShellApi</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Microsoft.Owin.Security.ApiKey\Microsoft.Owin.Security.ApiKey.csproj">
+      <Project>{e09682cb-8e40-41dd-b36c-7fec758958c6}</Project>
+      <Name>Microsoft.Owin.Security.ApiKey</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />

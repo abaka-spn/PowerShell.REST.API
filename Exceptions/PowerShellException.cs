@@ -1,17 +1,27 @@
-﻿namespace DynamicPowerShellApi.Exceptions
+﻿using System.Management.Automation;
+
+namespace DynamicPowerShellApi.Exceptions
 {
 	/// <summary>
 	/// Exception details from PowerShell.
 	/// </summary>
 	public class PowerShellException
 	{
-		/// <summary>
-		/// Gets or sets the name of the script.
-		/// </summary>
-		/// <value>
-		/// The name of the script.
-		/// </value>
-		public string ScriptName { get; set; }
+        /// <summary>
+        /// Gets or sets the error category
+        /// </summary>
+        /// <value>
+        /// The category of the error.
+        /// </value>
+        public ErrorCategory Category { get; set; }
+
+        /// <summary>
+        /// Gets or sets the name of the script.
+        /// </summary>
+        /// <value>
+        /// The name of the script.
+        /// </value>
+        public string ScriptName { get; set; }
 
 		/// <summary>
 		/// Gets or sets the error message.

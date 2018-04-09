@@ -17,6 +17,7 @@ namespace DynamicPowerShellApi.Controllers
     using System.Linq;
     using System.Net;
     using System.Net.Http;
+    using System.Security.Claims;
     using System.Text;
     using System.Threading.Tasks;
     using System.Web.Http;
@@ -76,11 +77,11 @@ namespace DynamicPowerShellApi.Controllers
 
             if (param1 == "2.0")
             {
-                spec = RestApiSpecification.GetSpecAsV2();
+                spec = OpenApiSpecification.GetSpecAsV2();
             }
             else
             {
-                spec = RestApiSpecification.GetSpecAsV3();
+                spec = OpenApiSpecification.GetSpecAsV3();
             }            
             return new HttpResponseMessage { Content = new StringContent(spec) };
         }
@@ -155,66 +156,21 @@ namespace DynamicPowerShellApi.Controllers
         /// <exception cref="Exception">
         /// </exception>
         [AuthorizeIfEnabled]
+        [ProcessRequest]
         public async Task<HttpResponseMessage> ProcessRequestAsync(HttpRequestMessage request = null)
         {
-            DynamicPowershellApiEvents
-                .Raise
-                .ReceivedRequest(Request.RequestUri.ToString());
+
+
+            PSCommand psCommand;
+            if (request.Properties.TryGetValue("APP_PSCommand", out object psc) && psc is PSCommand)
+                psCommand = (PSCommand)psc;
+            else
+            {
+                DynamicPowershellApiEvents.Raise.VerboseMessaging("Unable to retrieve the PowerShell command");
+                throw new PScommandNotFoundException("Unable to retrieve the PowerShell command");
+            }
 
             Guid activityId = Guid.NewGuid();
-
-            if (Request.RequestUri.Segments.Length < 4)
-                throw new MalformedUriException(string.Format("There is {0} segments but must be at least 4 segments in the URI.", Request.RequestUri.Segments.Length));
-
-            // Check if Http Method is supported
-            if (!Enum.TryParse(request.Method.Method,true, out RestMethod requestMethod))
-            {
-                // Check that the verbose messaging is working
-                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Http method ({0}) not supported", request.Method.Method));
-                throw new WebApiNotFoundException(string.Format("Http method ({0}) not supported", request.Method.Method));
-            }
-
-            string route = Request.RequestUri.Segments.Take(4).Aggregate((current, next) => current + next.ToLower());
-            if (! WebApiConfiguration.Routes[requestMethod].ContainsKey(route))
-            {
-                // Check that the verbose messaging is working
-                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Cannot find the requested command for {0}", route));
-                throw new WebApiNotFoundException(string.Format("Cannot find the requested command for {0}", route));
-            }
-
-            PSCommand psCommand = WebApiConfiguration.Routes[requestMethod][route];
-
-            /*
-            string apiName = Request.RequestUri.Segments[2].Replace("/", string.Empty);
-            //string methodName = Request.RequestUri.Segments[3].Replace("/", string.Empty);
-            string methodName = requestMethod.ToString() + "-" + Request.RequestUri.Segments[3].Replace("/", string.Empty);
-
-            // Check that the verbose messaging is working
-            DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("The api name is {0} and the method is {1}", apiName, methodName));
-
-            // find the api.
-            var api = WebApiConfiguration.Instance.Apis[apiName];
-            if (api == null)
-            {
-                // Check that the verbose messaging is working
-                DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Cannot find the requested web API: {0}", apiName));
-                throw new WebApiNotFoundException(string.Format("Cannot find the requested web API: {0}", apiName));
-            }
-
-            WebMethod method = api.WebMethods[methodName];
-            if (method == null)
-            {
-
-                if (method == null)
-                {
-                    DynamicPowershellApiEvents.Raise.VerboseMessaging(String.Format("Cannot find the requested web method: {0}", methodName));
-                    throw new WebMethodNotFoundException(string.Format("Cannot find web method: {0}", methodName));
-                }
-            }
-
-            // Is this scheduled as a job?
-            bool asJob = method.AsJob;
-            */
 
             bool asJob = psCommand.AsJob;
 
@@ -351,6 +307,45 @@ namespace DynamicPowerShellApi.Controllers
 
             #endregion
 
+            #region ----- User parameter -----
+            if (! string.IsNullOrWhiteSpace(psCommand.ParameterForUser))
+            {
+                string userName = this.User.Identity != null ? this.User.Identity.Name : "Anonymous";
+
+                inParams.Add(new KeyValuePair<string, object>(psCommand.ParameterForUser, userName));
+            }
+            #endregion
+
+            #region ----- Roles parameter -----
+            if (!string.IsNullOrWhiteSpace(psCommand.ParameterForRoles))
+            {
+                string[] userRoles = this.User.Identity == null
+                                            ? new string[0]
+                                            : (this.User.Identity as ClaimsIdentity)
+                                                    .Claims
+                                                    .Where(c => c.Type == ClaimTypes.Role)
+                                                    .Select(c => c.Value)
+                                                    .ToArray();
+
+                inParams.Add(new KeyValuePair<string, object>(psCommand.ParameterForRoles, userRoles));
+            }
+            #endregion
+
+            #region ----- Claims parameter -----
+            if (!string.IsNullOrWhiteSpace(psCommand.ParameterForClaims))
+            {
+                Claim[] userClaims = this.User.Identity == null
+                                            ? new Claim[0]
+                                            : (this.User.Identity as ClaimsIdentity)
+                                                    .Claims
+                                                    .ToArray();
+
+
+                inParams.Add(new KeyValuePair<string, object>(psCommand.ParameterForClaims, userClaims));
+            }
+            #endregion
+
+
             #region ----- Check if all parameters required are found -----
             if (psCommand.GetParametersRequired().Select(x => x.Name).Any(requiedName => inParams.All(q => q.Key != requiedName)))
             {
@@ -373,8 +368,9 @@ namespace DynamicPowerShellApi.Controllers
                         ? new JObject()
                         : output.ActualPowerShellData.StartsWith("[")
                             ? (JToken)JArray.Parse(output.ActualPowerShellData)
-                            : JObject.Parse(output.ActualPowerShellData);
-
+                            : output.ActualPowerShellData.StartsWith("{")
+                                ? JObject.Parse(output.ActualPowerShellData)
+                                : JObject.Parse("{\"Message\":"+output.ActualPowerShellData+"}");
 
                     JToken token2 = "";
 
@@ -478,13 +474,28 @@ namespace DynamicPowerShellApi.Controllers
                     };
                 }
             }
+            catch(PowerShellClientException ex)
+            {
+                DynamicPowershellApiEvents.Raise.InvalidPowerShellOutput("["+ ex.Category.ToString()+ "]"+ex.Message);
+                switch(ex.Category)
+                {
+                    case ErrorCategory.PermissionDenied : return Request.CreateErrorResponse(HttpStatusCode.Forbidden, ex.Message);
+                    case ErrorCategory.ObjectNotFound   : return Request.CreateErrorResponse(HttpStatusCode.NotFound, ex.Message);
+                    case ErrorCategory.InvalidArgument  : return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex.Message);
+                }
+                return Request.CreateErrorResponse(HttpStatusCode.InternalServerError, "[" + ex.Category.ToString() + "]" + ex.Message);
+            }
             catch (PowerShellExecutionException poException)
             {
+                string requestedHost = String.Empty;
+                if (Request.Properties.ContainsKey("MS_OwinContext"))
+                    requestedHost = ((OwinContext)Request.Properties["MS_OwinContext"]).Request.RemoteIpAddress;
+
                 CrashLogEntry entry = new CrashLogEntry
                 {
                     Exceptions = poException.Exceptions,
                     LogTime = poException.LogTime,
-                    RequestAddress = String.Empty, // TODO: Find a way of getting the request host.
+                    RequestAddress = requestedHost,
                     RequestMethod = psCommand.Name,
                     RequestUrl = Request.RequestUri.ToString()
                 };

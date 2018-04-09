@@ -90,9 +90,10 @@ Function Get-Animal
         [string]$Breed,
 
 		#Filter by alive
-        [switch]$Alive
+        [switch]$Alive,
 
-        #[switch]$LoadIfNeeded
+        [switch]$LoadIfNeeded
+
     )
 
     if ($LoadIfNeeded.IsPresent -and $Script:Animals.Count -eq 0)
@@ -379,3 +380,36 @@ else
 }
 
 Write-Host ("{0} animals" -f $Script:Animals.Count)
+
+
+
+
+Function Get-Info
+{
+    #Description de la fonction 
+    Param
+    (
+        [string]$Message,
+
+		[string]$User = "DemoUser",
+
+		[string[]]$Roles = @("DemoRole1","DemoRole2"),
+
+
+		[System.Security.Claims.Claim[]]$Claims = (new-object System.Security.Claims.Claim([System.Security.Claims.ClaimTypes]::Name,"Anonymous"))
+    )
+
+
+	(New-Object Animal -Property @{Name = $User; "Nickname" = $Roles; Parents=($Claims | % {$_.Value})})
+
+    if($User -eq "SeB2")
+    {
+        $E = new-object System.Exception
+        Write-Error -Exception $E -Message "Vous n'etes pas autorisé a réaliser cette tache." -Category ObjectNotFound
+
+        #$Error[0].Exception -is [System.Exception]
+        #$Error[0] | ConvertTo-Json 
+
+    }
+
+}

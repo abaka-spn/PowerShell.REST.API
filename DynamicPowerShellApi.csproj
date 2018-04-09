@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>DynamicPowerShellApi</RootNamespace>
     <AssemblyName>DynamicPowerShellApi</AssemblyName>
-    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <CodeContractsAssemblyMode>0</CodeContractsAssemblyMode>
@@ -17,6 +17,7 @@
     <RestorePackages>true</RestorePackages>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x64</PlatformTarget>
@@ -102,7 +103,10 @@
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.Diagnostics.Tracing.EventSource, Version=1.1.28.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>packages\Microsoft.Diagnostics.Tracing.EventSource.Redist.1.1.28\lib\net40\Microsoft.Diagnostics.Tracing.EventSource.dll</HintPath>
+      <HintPath>packages\Microsoft.Diagnostics.Tracing.EventSource.Redist.1.1.28\lib\net46\Microsoft.Diagnostics.Tracing.EventSource.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.OpenApi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=3f5743946376f042, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.OpenApi.1.0.0-beta014\lib\net46\Microsoft.OpenApi.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Owin, Version=3.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Owin.3.1.0\lib\net45\Microsoft.Owin.dll</HintPath>
@@ -113,7 +117,7 @@
     <Reference Include="Newtonsoft.Json.Schema, Version=3.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.Schema.3.0.4\lib\net45\Newtonsoft.Json.Schema.dll</HintPath>
     </Reference>
-    <Reference Include="Owin">
+    <Reference Include="Owin, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f0ebd12fd5e55cc5, processorArchitecture=MSIL">
       <HintPath>packages\Owin.1.0\lib\net40\Owin.dll</HintPath>
     </Reference>
     <Reference Include="System" />
@@ -143,19 +147,25 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuthorizeIfEnabledAttribute.cs" />
+    <Compile Include="Configuration\ApiKeyAuthentication.cs" />
     <Compile Include="Configuration\HttpMethodConverter.cs" />
     <Compile Include="Configuration\PSCommand.cs" />
+    <Compile Include="Configuration\PSModel.cs" />
     <Compile Include="Configuration\PSParameter.cs" />
     <Compile Include="Configuration\ApiPath.cs" />
-    <Compile Include="Configuration\Authentication.cs" />
+    <Compile Include="Configuration\JwtAuthentication.cs" />
     <Compile Include="Configuration\JobStoreConfiguration.cs" />
-    <Compile Include="Configuration\PSHelpInfo.cs" />
+    <Compile Include="Configuration\PSLoader.cs" />
+    <Compile Include="Configuration\UserCollection.cs" />
+    <Compile Include="Configuration\User.cs" />
+    <Compile Include="Exceptions\PowerShellClientException.cs" />
+    <Compile Include="Exceptions\PScommandNotFoundException.cs" />
     <Compile Include="JsonValidate.cs" />
     <Compile Include="Configuration\RestMethod.cs" />
     <Compile Include="Configuration\RestLocation.cs" />
     <Compile Include="Configuration\WebApiCollection.cs" />
-    <Compile Include="Configuration\Parameter.cs" />
-    <Compile Include="Configuration\ParameterCollection.cs" />
+    <Compile Include="Configuration\WebParameter.cs" />
+    <Compile Include="Configuration\WebParameterCollection.cs" />
     <Compile Include="Configuration\WebApiConfiguration.cs" />
     <Compile Include="Configuration\WebApi.cs" />
     <Compile Include="Configuration\WebMethod.cs" />
@@ -172,7 +182,6 @@
     <Compile Include="Exceptions\WebMethodNotFoundException.cs" />
     <Compile Include="GenericActionSelector.cs" />
     <Compile Include="GenericControllerSelector.cs" />
-    <Compile Include="Help.cs" />
     <Compile Include="IRunner.cs" />
     <Compile Include="Jobs\IJobListProvider.cs" />
     <Compile Include="Jobs\JobListProvider.cs" />
@@ -183,9 +192,10 @@
     <Compile Include="Logging\ICrashLogger.cs" />
     <Compile Include="Model\ErrorResponse.cs" />
     <Compile Include="Model\PowershellReturn.cs" />
+    <Compile Include="Exceptions\ProcessRequestAttribute.cs" />
     <Compile Include="PowershellRunner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RestApiSpecification.cs" />
+    <Compile Include="OpenApiSpecification.cs" />
     <Compile Include="RunspacePoolWrapper.cs" />
     <Compile Include="Security\Certificate.cs" />
     <Compile Include="SolutionAssemblyInfo.cs" />
@@ -196,20 +206,20 @@
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
-    <None Include="packages.config" />
     <Content Include="ScriptRepository\Example.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="ScriptRepository\DemoAnimal.psm1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Include="packages.config" />
+    <None Include="ScriptRepository\Clap.psm1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="ScriptRepository\CodeNetwork.psm1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="_EventSourceUsersGuide.docx" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="Microsoft.OpenApi\Microsoft.OpenApi.csproj">
-      <Project>{92362b0c-1cf8-4523-8f15-6499c6e6a372}</Project>
-      <Name>Microsoft.OpenApi</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="packages\Microsoft.Diagnostics.Tracing.EventRegister.1.1.28\build\Microsoft.Diagnostics.Tracing.EventRegister.targets" Condition="Exists('packages\Microsoft.Diagnostics.Tracing.EventRegister.1.1.28\build\Microsoft.Diagnostics.Tracing.EventRegister.targets')" />

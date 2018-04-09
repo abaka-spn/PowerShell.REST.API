@@ -20,7 +20,7 @@
 		/// </exception>
 		public static X509Certificate2 ReadCertificate()
 		{
-			var auth = WebApiConfiguration.Instance.Authentication;
+			var auth = WebApiConfiguration.Instance.JwtAuthentication;
 			var store = new X509Store(auth.StoreName, auth.StoreLocation);
 			store.Open(OpenFlags.OpenExistingOnly | OpenFlags.ReadOnly);
 

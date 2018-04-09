@@ -161,9 +161,19 @@ namespace DynamicPowerShellApi
                                 if (error.ErrorDetails == null)
                                     DynamicPowershellApiEvents.Raise.UnhandledException("error.ErrorDetails is null");
 
-                                string errorDetails = error.ErrorDetails != null ? error.ErrorDetails.Message : String.Empty;
+                                string errorDetails = error.ErrorDetails != null ? error.ErrorDetails.Message : error.Exception.Message ?? String.Empty;
                                 string scriptStack = error.ScriptStackTrace ?? String.Empty;
                                 string commandPath = error.InvocationInfo.PSCommandPath ?? String.Empty;
+                                ErrorCategory category = error.CategoryInfo.Category;
+
+                                
+                                if (error.CategoryInfo.Category == ErrorCategory.PermissionDenied ||
+                                    error.CategoryInfo.Category == ErrorCategory.ObjectNotFound   ||
+                                    error.CategoryInfo.Category == ErrorCategory.InvalidArgument)
+                                {
+                                    throw new PowerShellClientException(errorDetails, error.CategoryInfo.Category);
+                                }
+
 
                                 if (error.ScriptStackTrace == null)
                                     DynamicPowershellApiEvents.Raise.UnhandledException("error.ScriptStackTrace is null");
@@ -180,6 +190,7 @@ namespace DynamicPowerShellApi
                                     DynamicPowershellApiEvents.Raise.UnhandledException("error.Exception is null");
 
                                 DynamicPowershellApiEvents.Raise.PowerShellError(
+                                    category.ToString(),
                                     errorDetails,
                                     scriptStack,
                                     commandPath,
@@ -187,6 +198,7 @@ namespace DynamicPowerShellApi
 
                                 runtimeErrors.Add(new PowerShellException
                                 {
+                                    Category = category,
                                     StackTrace = scriptStack,
                                     ErrorMessage = errorDetails,
                                     LineNumber = error.InvocationInfo != null ? error.InvocationInfo.ScriptLineNumber : 0,
@@ -231,7 +243,10 @@ namespace DynamicPowerShellApi
 				if (runnerException.GetType() == typeof(PowerShellExecutionException))
 					throw;
 
-				DynamicPowershellApiEvents.Raise.UnhandledException(runnerException.Message, runnerException.StackTrace);
+                if (runnerException.GetType() == typeof(PowerShellClientException))
+                    throw;
+
+                DynamicPowershellApiEvents.Raise.UnhandledException(runnerException.Message, runnerException.StackTrace);
 				throw new PowerShellExecutionException(runnerException.Message)
 				{
 					Exceptions = new List<PowerShellException>

@@ -1,16 +1,28 @@
 # PowerShell.REST.API
-[![Build status](https://ci.appveyor.com/api/projects/status/rifttomp0tb8bjxa?svg=true)](https://ci.appveyor.com/project/tonybaloney/powershell-rest-api)
 
 Turn any PowerShell script into a HTTP REST API!
 
 ### Builds
 
-* __Tested Build__ https://github.com/DimensionDataCBUSydney/PowerShell.REST.API/releases
-* __Latest Build__ https://ci.appveyor.com/project/tonybaloney/powershell-rest-api/build/artifacts
+* No for the moment
 
-## Overview
 
-This project is a HTTP service written in C#.NET using the Microsoft OWIN libraries.
+## The goal of this fork
+
+* Take in charge a Custom PowerShell module: Done.
+* Expose a OpenAPI specification from Script or Module: Done.
+* Define Rest Method for each WebMethod in configuration file: Done.
+* Define Rest Location for each parameters in configuration file: Done.
+* Each parameters definition will be fetched from scripts or commands: Done.
+* Add Swagger UI for graphical help: Done.
+* Add ApiKey authentication: Done.
+* Transfer user identity to the Powershell command: Done.
+* 
+
+
+## Overview (Same as orignal project)
+
+HTTP service written in C#.NET using the Microsoft OWIN libraries.
 
 The concept is to take an existing PowerShell script, with parameters and expose it as a HTTP/REST method.
 
@@ -21,14 +33,15 @@ and parsing complex PowerShell response objects back into JSON.
 
 It also supports async jobs to be run as separate threads, with the job results to be stored on disk.
 
-## How it works
+## How it works (Same as orignal project)
 
 This project implements a OWIN WebAPI HTTP service with a single "generic" API controller. The API controller consults the configuration collection of the endpoint
 to identify which PowerShell script needs to be run for each HTTP request.
 It hosts a PowerShell session to import and run the script, whilst monitoring the script process for faults. It converts the response of the script to a temporary JObject
 and then returns the response data.
 
-It also converts any GET or POST parameters to the web method to a parameter collection and passes them to the PowerShell process.
+The parameters can be passed by PATH, QUERYSTRING, BODY or HEADER (Default: Body).
+The PowerShell scripts can be called by GET, POST, DELETE or PUT method.
 
 ## Running
 ### run on the command line
@@ -51,15 +64,19 @@ The file DynamicPowerShellApi.Host.exe.config is the main configuration file. It
 
 
 ```xml
-<WebApiConfiguration HostAddress="http://localhost:9000">
+<WebApiConfiguration HostAddress="http://localhost:9000"
+                     Version="1.0.0.0"
+                     Title="Sample PowerShell Command Rest API">
 		<Jobs JobStorePath="c:\temp\" />
 		<Authentication Enabled="false" StoreName="My" StoreLocation="LocalMachine" Thumbprint="E6B6364C75ED8B6495A42D543AC728B4C2263082" Audience="http://aperture.identity/connectors" />
 		<Apis>
 			<WebApi Name="Example">
 				<WebMethods>
-					<WebMethod Name="GetMessage" AsJob="true" PowerShellPath="Example.ps1">
+					<WebMethod Name="Get-Message" RestMethod="Get" AsJob="false" PowerShellPath="Example.ps1">
 						<Parameters>
-							<Parameter Name="message" Type="string" />
+							<Parameter Name="message1" Location="Query" />
+                                                        <Parameter Name="message2" Location="Path" />
+                                                        <Parameter Name="message3" Location="Header" />	
 						</Parameters>
 					</WebMethod>
 				</WebMethods>
@@ -82,6 +99,8 @@ The file DynamicPowerShellApi.Host.exe.config is the main configuration file. It
 
 ## Adding a web API
 
+.PARAMETER MESSAGE2
+	Message 2 description
 If you wanted to offer a script HTTP GET:/foo/bar, POST:/foo/baz
 
 First, add a WebApi element with the name __foo__
@@ -98,13 +117,43 @@ Take your named parameters, for example `$message` and do something with them, i
 
 
 ```powershell
+<#
+.SYNOPSIS
+	This script is PowerShell Script Sample for Rest Api exposition.
+.DESCRIPTION
+    This script content differents types arguments with attributes validator.
+.NOTES
+    Additional Notes, eg
+    File Name  : Example.ps1
+    Author     : Sébastien Pichon - sebastien.pichon@adeo.com
+.LINK
+    A hyper link, eg
+.PARAMETER MESSAGE1
+    Message 1 description
+.PARAMETER MESSAGE2
+	Message 2 description
+.PARAMETER MESSAGE2
+	Message  description
+#>
 param ( 
-	$message
+	#Message 1 ok?
+	[string]$Message1 = "def1",
+	[string]$Message2 = "def2",
+	[string]$Message3 = "def3",
+	[string]$Message4 = "def4"
 	)
-# go backwards
-$back_message = -join $message[-1..-$message.Length]
 
-@{ "message" = $back_message } | ConvertTo-Json -Compress
+#Sleep -s 10
+
+@{
+	forlder = Get-Item -Path . | Select-Object name;
+	path = $PWD.path;
+	msg1 = $Message1;
+	msg2 = $Message2;
+	msg3 = $Message3;
+	msg4 = $Message4
+}
+
 ```
 
 Now, add the method to the configuration file by adding an `WebMethod` Element
