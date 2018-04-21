@@ -64,6 +64,7 @@ PowerShellRestApi.Host.exe --service
 ```cmd
 PowerShellRestApi.Host.exe --install-service --service-user "UserABC" --service-password "Password123"
 ```
+You need to authorize the 
 
 ## Configuration
 
@@ -317,5 +318,6 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
 </CrashLogEntry>
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTE5Mjg5MTc1NSwtMTIzNzUxOTQ1N119
+eyJoaXN0b3J5IjpbLTExNjg1NzkyOTcsLTEyMzc1MTk0NTddfQ
+==
 -->
