@@ -36,8 +36,8 @@ and parsing complex PowerShell response objects back into JSON.
 
 It also supports async jobs to be run as separate threads, with the job results to be stored on disk.
 
-A OpenAPI specification file is aivailable at https://<>/api/server/spec.
-
+A OpenAPI specification file is aivailable at **/api/server/spec**.
+A swagger UI is 
 
 ## How it works
 *It is near same as orignal project*
@@ -317,5 +317,5 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
 </CrashLogEntry>
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTkwMjk3NjE1OF19
+eyJoaXN0b3J5IjpbMjA4NjU1NzQ1NF19
 -->
