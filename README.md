@@ -1,10 +1,12 @@
+
+
 # PowerShell.REST.API
 
 Turn any PowerShell script into a HTTP REST API!
 
 ### Builds
 
-* No for the moment
+* 1.2.1804.1801
 
 
 ## The goal of this fork
@@ -20,48 +22,50 @@ Turn any PowerShell script into a HTTP REST API!
 * 
 
 
-## Overview (Same as orignal project)
+## Overview
+*It is near same as orignal project*
 
 HTTP service written in C#.NET using the Microsoft OWIN libraries.
 
-The concept is to take an existing PowerShell script, with parameters and expose it as a HTTP/REST method.
+The concept is to take an existing PowerShell **script** or **command** in PowerShell module, with parameters and expose it as a HTTP/REST method.
 
-The web service configures the web methods as boot based on the configuration of the script repository.
+The web service configures the web methods as boot based on the configuration of the script repository and generate the OpenAPI specfication file.
 
 It hosts a PowerShell runspace pool to load, run and check PowerShell scripts, capturing errors and stack traces to the logs
 and parsing complex PowerShell response objects back into JSON.
 
 It also supports async jobs to be run as separate threads, with the job results to be stored on disk.
 
-## How it works (Same as orignal project)
+When the application start, all PowerShell command 
 
-This project implements a OWIN WebAPI HTTP service with a single "generic" API controller. The API controller consults the configuration collection of the endpoint
-to identify which PowerShell script needs to be run for each HTTP request.
-It hosts a PowerShell session to import and run the script, whilst monitoring the script process for faults. It converts the response of the script to a temporary JObject
-and then returns the response data.
+## How it works
+*It is near same as orignal project*
 
-The parameters can be passed by PATH, QUERYSTRING, BODY or HEADER (Default: Body).
-The PowerShell scripts can be called by GET, POST, DELETE or PUT method.
+This project implements a OWIN WebAPI HTTP service with a single "generic" API controller. The API controller consults the configuration collection of the endpoint to identify which PowerShell script needs to be run for each HTTP request.
+It hosts a PowerShell session to import and run the script, whilst monitoring the script process for faults. It is piped through [ConvertTo-Json] and the response to a temporary JObject and then returns the response data (it is a difference with original project).
+
+The PowerShell scripts can be called by GET, POST, DELETE or PUT method. It mus be defined in the configuration file
+
+The parameters can be passed by PATH, QUERYSTRING, BODY, HEADER or VALUE defined in the configuration file (Default: Body).
 
 ## Running
 ### run on the command line
 ```cmd
-DynamicPowerShellApi.Host.exe --console
+PowerShellRestApi.Host.exe --console
 ```
 ### run as a service
 ```cmd
-DynamicPowerShellApi.Host.exe --service
+PowerShellRestApi.Host.exe --service
 ```
 ### install the service
 ```cmd
-DynamicPowerShellApi.Host.exe --install-service --service-user "UserABC" --service-password "Password123"
+PowerShellRestApi.Host.exe --install-service --service-user "UserABC" --service-password "Password123"
 ```
 
 ## Configuration
 
 ### The main service configuration file
-The file DynamicPowerShellApi.Host.exe.config is the main configuration file. It contains the setup for security, logging and the methods themselves.
-
+The file **PowerShellRestApi.Host.exe.config** is the main configuration file. It contains the setup for security, logging and the methods themselves.
 
 ```xml
 <WebApiConfiguration HostAddress="http://localhost:9000"
@@ -69,18 +73,57 @@ The file DynamicPowerShellApi.Host.exe.config is the main configuration file. It
                      Title="Sample PowerShell Command Rest API">
 		<Jobs JobStorePath="c:\temp\" />
 		<Authentication Enabled="false" StoreName="My" StoreLocation="LocalMachine" Thumbprint="E6B6364C75ED8B6495A42D543AC728B4C2263082" Audience="http://aperture.identity/connectors" />
+	    <ApiKeyAuthentication Enabled="true" Header="X-API-KEY" HeaderKey="" />
+		<Users>
+		   <User Name="SeB" ApiKey="123" IpAddresses="10.1.53.10,10.1.52.10" Roles="admins" />
+		   <User Name="SeB2" ApiKey="1234" IpAddresses="" Roles="admins,OSInstallRW" />
+		</Users>
+
 		<Apis>
-			<WebApi Name="Example">
-				<WebMethods>
-					<WebMethod Name="Get-Message" RestMethod="Get" AsJob="false" PowerShellPath="Example.ps1">
-						<Parameters>
-							<Parameter Name="message1" Location="Query" />
-                                                        <Parameter Name="message2" Location="Path" />
-                                                        <Parameter Name="message3" Location="Header" />	
-						</Parameters>
-					</WebMethod>
-				</WebMethods>
-			</WebApi>
+		<!-- Using Powershell module -->
+		    <WebApi Name="Demo" Module="DemoAnimal.psm1">
+		      <WebMethods>
+				<!-- Published as PUT on http://localhost:9000/Demo/Animal --> 
+		        <WebMethod Name="Put-Animal" Command="Add-Animal" />
+				<!-- Published as POST on http://localhost:9000/Demo/Animal --> 
+		        <WebMethod Name="Post-Animal" Command="New-Animal"  />
+		        				<!-- Published as GET on http://localhost:9000/Demo/Animal --> 
+		        <WebMethod Name="Get-Animal" Command="Get-Animal"  Roles="admins,users" />
+		        <WebMethod Name="Get-Animal2" Command="Get-Animal" Roles="users" Users="SeB" />
+		        <WebMethod Name="Get-Animal3" Command="Get-Animal"  />
+		        <WebMethod Name="Get-Info" Command="Get-Info" AsJob="false" ParameterForUserName="User" ParameterForUserRoles="Roles" ParameterForUserClaims="" />
+		      </WebMethods>
+		    </WebApi>	
+		    
+		    <!-- Using Powershell module -->
+		    <WebApi Name="Example">
+		      <WebMethods>
+		        <WebMethod Name="GET-Message" AsJob="false" PowerShellPath="Example.ps1">
+		          <Parameters>
+		            <Parameter Name="message1" Location="Query" />
+		            <Parameter Name="message2" Location="Path" />
+		            <Parameter Name="message3" Location="Header" />
+		          </Parameters>
+		        </WebMethod>
+		        <WebMethod Name="Post-Message" AsJob="false" PowerShellPath="Example.ps1">
+		          <Parameters>
+		            <Parameter Name="message1" Location="Query" />
+		            <Parameter Name="message2" Location="Path" />
+		            <Parameter Name="message3" Location="Query" />
+		          </Parameters>
+		        </WebMethod>
+		        <WebMethod Name="Put-Message" AsJob="true" PowerShellPath="Example.ps1">
+		          <Parameters>
+		            <Parameter Name="message1" Location="Query" />
+		          </Parameters>
+		        </WebMethod>
+		        <WebMethod Name="Delete-Message" AsJob="true" PowerShellPath="Example.ps1">
+		          <Parameters>
+		            <Parameter Name="message1" Location="Query" />
+		          </Parameters>
+		        </WebMethod>
+		      </WebMethods>
+		    </WebApi>
 		</Apis>
 	</WebApiConfiguration>
 ```
@@ -271,5 +314,5 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
 </CrashLogEntry>
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbOTE1MzMzNjgzXX0=
+eyJoaXN0b3J5IjpbLTEyNTMxNTUwNjldfQ==
 -->
