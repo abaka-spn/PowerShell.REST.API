@@ -36,7 +36,7 @@ and parsing complex PowerShell response objects back into JSON.
 
 It also supports async jobs to be run as separate threads, with the job results to be stored on disk.
 
-When the application start, all PowerShell commands are analyze by reflexion and a OpenAPI specification file are generated at /api/server/spec.
+A When the application start, all PowerShell commands are analyze by reflexion and a OpenAPI specification file are generated and accessible at /api/server/spec.
 
 
 ## How it works
@@ -48,6 +48,8 @@ It hosts a PowerShell session to import and run the script, whilst monitoring th
 The PowerShell scripts can be called by GET, POST, DELETE or PUT method. It mus be defined in the configuration file
 
 The parameters can be passed by PATH, QUERYSTRING, BODY, HEADER or VALUE defined in the configuration file (Default: Body).
+
+When the application start, all PowerShell commands are analyze by reflexion and a OpenAPI specification file are generated.
 
 ## Running
 ### run on the command line
@@ -315,5 +317,5 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
 </CrashLogEntry>
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTgwMDg1OTk5OV19
+eyJoaXN0b3J5IjpbMTE1Njg0MzE4MV19
 -->
