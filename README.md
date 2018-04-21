@@ -125,7 +125,7 @@ Take your named parameters, for example `$message` and do something with them, i
 .NOTES
     Additional Notes, eg
     File Name  : Example.ps1
-    Author     : Sébastien Pichon - sebastien.pichon@adeo.com
+    Author     : SÃ©bastien Pichon - sebastien.pichon@adeo.com
 .LINK
     A hyper link, eg
 .PARAMETER MESSAGE1
@@ -270,3 +270,6 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
   <RequestMethod>bar</RequestMethod>
 </CrashLogEntry>
 ```
+<!--stackedit_data:
+eyJoaXN0b3J5IjpbOTE1MzMzNjgzXX0=
+-->
