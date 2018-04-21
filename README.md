@@ -36,7 +36,7 @@ and parsing complex PowerShell response objects back into JSON.
 
 It also supports async jobs to be run as separate threads, with the job results to be stored on disk.
 
-When the application start, all PowerShell commands are analyze by reflexion and a OpenAPI specification file are generated on /api/server/.
+When the application start, all PowerShell commands are analyze by reflexion and a OpenAPI specification file are generated at /api/server/spec.
 
 
 ## How it works
@@ -315,5 +315,5 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
 </CrashLogEntry>
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMzQ0MTYwMjMwXX0=
+eyJoaXN0b3J5IjpbMTgwMDg1OTk5OV19
 -->
