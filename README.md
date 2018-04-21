@@ -90,7 +90,7 @@ The file **PowerShellRestApi.Host.exe.config** is the main configuration file. I
 		        <WebMethod Name="Put-Animal" Command="Add-Animal" />
 				<!-- Published as POST on http://localhost:9000/Demo/Animal --> 
 		        <WebMethod Name="Post-Animal" Command="New-Animal"  />
-		        				<!-- Published as GET on http://localhost:9000/Demo/Animal --> 
+   				<!-- Published as GET on http://localhost:9000/Demo/Animal --> 
 		        <WebMethod Name="Get-Animal" Command="Get-Animal"  Roles="admins,users" />
 		        <WebMethod Name="Get-Animal2" Command="Get-Animal" Roles="users" Users="SeB" />
 		        <WebMethod Name="Get-Animal3" Command="Get-Animal"  />
@@ -317,5 +317,5 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
 </CrashLogEntry>
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTEyMzc1MTk0NTddfQ==
+eyJoaXN0b3J5IjpbMTE5Mjg5MTc1NSwtMTIzNzUxOTQ1N119
 -->
