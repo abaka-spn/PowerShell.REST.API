@@ -157,5 +157,8 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
+
+#Project files
 packages/
-/.vs/DynamicPowerShellAPI/v15/Server/sqlite3
+/.vs
+/.local

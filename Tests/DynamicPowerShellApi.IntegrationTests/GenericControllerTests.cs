@@ -1,4 +1,4 @@
-﻿namespace DynamicPowerShellApi.IntegrationTests
+﻿namespace PowerShellRestApi.IntegrationTests
 {
 	using System;
 	using System.IdentityModel.Tokens;
@@ -6,8 +6,8 @@
 	using System.Net.Http;
 	using System.Security.Claims;
 
-	using DynamicPowerShellApi.Owin;
-	using DynamicPowerShellApi.Security;
+	using PowerShellRestApi.Owin;
+	using PowerShellRestApi.Security;
 
 	using Microsoft.Owin.Hosting;
 	using Microsoft.VisualStudio.TestTools.UnitTesting;

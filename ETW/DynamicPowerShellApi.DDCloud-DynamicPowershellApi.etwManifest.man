@@ -1,7 +1,7 @@
 <instrumentationManifest xmlns="http://schemas.microsoft.com/win/2004/08/events">
  <instrumentation xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:win="http://manifests.microsoft.com/win/2004/08/windows/events">
   <events xmlns="http://schemas.microsoft.com/win/2004/08/events">
-<provider name="DDCloud-DynamicPowershellApi" guid="{2fb1cbdf-1b23-571e-203c-a2c9ded93a89}" resourceFileName="C:\SeB\VS2017\Projects\PowerShell.REST.API-Abaka\ETW\DynamicPowerShellApi.DDCloud-DynamicPowershellApi.etwManifest.dll" messageFileName="C:\SeB\VS2017\Projects\PowerShell.REST.API-Abaka\ETW\DynamicPowerShellApi.DDCloud-DynamicPowershellApi.etwManifest.dll" symbol="DDCloudDynamicPowershellApi">
+<provider name="DDCloud-PowerShellRestApi" guid="{2fb1cbdf-1b23-571e-203c-a2c9ded93a89}" resourceFileName="C:\SeB\VS2017\Projects\PowerShell.REST.API-Abaka\ETW\PowerShellRestApi.DDCloud-PowerShellRestApi.etwManifest.dll" messageFileName="C:\SeB\VS2017\Projects\PowerShell.REST.API-Abaka\ETW\PowerShellRestApi.DDCloud-PowerShellRestApi.etwManifest.dll" symbol="DDCloudPowerShellRestApi">
  <tasks>
   <task name="ModuleException" message="$(string.task_ModuleException)" value="64521"/>
   <task name="LoadingModule" message="$(string.task_LoadingModule)" value="64522"/>

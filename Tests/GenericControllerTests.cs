@@ -1,6 +1,6 @@
-﻿using DynamicPowerShellApi.Model;
+﻿using PowerShellRestApi.Model;
 
-namespace DynamicPowerShellApi.Tests
+namespace PowerShellRestApi.Tests
 {
 	using System;
 	using System.Collections.Generic;
@@ -9,19 +9,20 @@ namespace DynamicPowerShellApi.Tests
 	using Autofac;
 
 	using Configuration;
-	using Controllers;
-	using Exceptions;
+	using WebApi.Controllers;
+	using WebApi.Exceptions;
 
 	using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 	using Moq;
 
 	using Newtonsoft.Json.Linq;
+    using PowerShellRestApi.WebApi;
 
-	/// <summary>
-	/// The generic controller tests.
-	/// </summary>
-	[TestClass]
+    /// <summary>
+    /// The generic controller tests.
+    /// </summary>
+    [TestClass]
 	public class GenericControllerTests
 	{
 		/// <summary>

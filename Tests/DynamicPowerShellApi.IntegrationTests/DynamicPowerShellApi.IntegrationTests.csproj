@@ -112,19 +112,21 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
     <None Include="_EventRegisterUsersGuide.docx" />
     <None Include="_EventSourceUsersGuide.docx" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\DynamicPowerShellApi.csproj">
-      <Project>{0e96dee8-3bd5-4396-8c84-52aaf60eb270}</Project>
-      <Name>DynamicPowerShellApi</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Owin\DynamicPowerShellApi.Owin.csproj">
+    <ProjectReference Include="..\..\PowerShellApi.Owin\PowerShellRestApi.Owin.csproj">
       <Project>{891afc4a-9927-467e-a7db-bd373f782142}</Project>
-      <Name>DynamicPowerShellApi.Owin</Name>
+      <Name>PowerShellRestApi.Owin</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\PowerShellApi.WebApi\PowerShellRestApi.WebApi.csproj">
+      <Project>{0e96dee8-3bd5-4396-8c84-52aaf60eb270}</Project>
+      <Name>PowerShellRestApi.WebApi</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>
