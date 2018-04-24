@@ -1,5 +1,9 @@
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 09fb6c5b2e07a072476b7364a3666e9221d2ff18
 # PowerShell.REST.API
 
 Turn any PowerShell script into a HTTP REST API!
@@ -7,10 +11,18 @@ Turn any PowerShell script into a HTTP REST API!
 ### Builds
 
 * 1.2.1804.1801
+<<<<<<< HEAD
+=======
 
+>>>>>>> 09fb6c5b2e07a072476b7364a3666e9221d2ff18
 
 ## The goal of this project
 
+<<<<<<< HEAD
+## The goal of this project
+
+I happy to publish my first project !
+=======
 I happy to publish my first project !
 
 This project is inspired of DynamicPowerShellApi projet but I want to add the following features:
@@ -24,8 +36,24 @@ This project is inspired of DynamicPowerShellApi projet but I want to add the fo
 * Transfer user identity to the Powershell command : `Done`.
 * Take in charge Custum Powershell class as parameter: `Done`
 * Take in charge versionng of API : `In future`
+>>>>>>> 09fb6c5b2e07a072476b7364a3666e9221d2ff18
 
+This project is inspired of DynamicPowerShellApi projet but I want to add the following features:
+* Take in charge Custom PowerShell module: `Done`.
+* Expose a OpenAPI specification from Script or Module: `Done`.
+* Define Rest Method for each WebMethod in configuration file: `Done`.
+* Define Rest Location for each parameters in configuration file: `Done`.
+* Each parameters definition will be fetched from scripts or commands: `Done`.
+* Add Swagger UI for graphical help: `Done`.
+* Add ApiKey authentication: `Done`.
+* Transfer user identity to the Powershell command : `Done`.
+* Take in charge Custum Powershell class as parameter: `Done`
+* Take in charge versionng of API : `In future`
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 09fb6c5b2e07a072476b7364a3666e9221d2ff18
 ## Overview
 *It is near same as orignal project but the behavior is not same*
 
@@ -43,6 +71,7 @@ It also supports async jobs to be run as separate threads, with the job results 
 A OpenAPI specification file is available at **/api/server/spec**.
 
 A swagger UI is available at **/help**
+<<<<<<< HEAD
 
 ## How it works
 *This project has been restructured but it is near same as orignal*
@@ -54,6 +83,19 @@ The PowerShell scripts can be called by GET, POST, DELETE or PUT method. It mus 
 
 The parameters can be passed by PATH, QUERYSTRING, BODY, HEADER or VALUE defined in the configuration file (Default: Body).
 
+=======
+
+## How it works
+*This project has been restructured but it is near same as orignal*
+
+This project implements a OWIN WebAPI HTTP service with a single "generic" API controller. The API controller consults the configuration collection of the endpoint to identify which PowerShell script needs to be run for each HTTP request.
+It hosts a PowerShell session to import and run the script, whilst monitoring the script process for faults. It is piped through [ConvertTo-Json] and the response to a temporary JObject and then returns the response data (it is a difference with original project).
+
+The PowerShell scripts can be called by GET, POST, DELETE or PUT method. It mus be defined in the configuration file
+
+The parameters can be passed by PATH, QUERYSTRING, BODY, HEADER or VALUE defined in the configuration file (Default: Body).
+
+>>>>>>> 09fb6c5b2e07a072476b7364a3666e9221d2ff18
 When the application start, all PowerShell commands are analyze by reflexion and a OpenAPI specification file are generated.
 
 ## Running
@@ -369,3 +411,7 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
   <RequestMethod>bar</RequestMethod>
 </CrashLogEntry>
 ```
+<!--stackedit_data:
+eyJoaXN0b3J5IjpbLTI0NTY4MDMwMiwtMTE2ODU3OTI5NywtMT
+IzNzUxOTQ1N119
+-->
