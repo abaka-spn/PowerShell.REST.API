@@ -1,5 +1,6 @@
 
 
+
 # PowerShell.REST.API
 
 Turn any PowerShell script into a HTTP REST API!
@@ -9,21 +10,25 @@ Turn any PowerShell script into a HTTP REST API!
 * 1.2.1804.1801
 
 
-## The goal of this fork
+## The goal of this project
 
-* Take in charge a Custom PowerShell module: Done.
-* Expose a OpenAPI specification from Script or Module: Done.
-* Define Rest Method for each WebMethod in configuration file: Done.
-* Define Rest Location for each parameters in configuration file: Done.
-* Each parameters definition will be fetched from scripts or commands: Done.
-* Add Swagger UI for graphical help: Done.
-* Add ApiKey authentication: Done.
-* Transfer user identity to the Powershell command: Done.
-* 
+I happy to publish my first project !
+
+This project is inspired of DynamicPowerShellApi projet but I want to add the following features:
+* Take in charge Custom PowerShell module: `Done`.
+* Expose a OpenAPI specification from Script or Module: `Done`.
+* Define Rest Method for each WebMethod in configuration file: `Done`.
+* Define Rest Location for each parameters in configuration file: `Done`.
+* Each parameters definition will be fetched from scripts or commands: `Done`.
+* Add Swagger UI for graphical help: `Done`.
+* Add ApiKey authentication: `Done`.
+* Transfer user identity to the Powershell command : `Done`.
+* Take in charge Custum Powershell class as parameter: `Done`
+* Take in charge versionng of API : `In future`
 
 
 ## Overview
-*It is near same as orignal project*
+*It is near same as orignal project but the behavior is not same*
 
 HTTP service written in C#.NET using the Microsoft OWIN libraries.
 
@@ -37,10 +42,11 @@ and parsing complex PowerShell response objects back into JSON.
 It also supports async jobs to be run as separate threads, with the job results to be stored on disk.
 
 A OpenAPI specification file is available at **/api/server/spec**.
+
 A swagger UI is available at **/help**
 
 ## How it works
-*It is near same as orignal project*
+*This project has been restructured but it is near same as orignal*
 
 This project implements a OWIN WebAPI HTTP service with a single "generic" API controller. The API controller consults the configuration collection of the endpoint to identify which PowerShell script needs to be run for each HTTP request.
 It hosts a PowerShell session to import and run the script, whilst monitoring the script process for faults. It is piped through [ConvertTo-Json] and the response to a temporary JObject and then returns the response data (it is a difference with original project).
@@ -145,22 +151,21 @@ The file **PowerShellRestApi.Host.exe.config** is the main configuration file. I
 ```
 
 ## Adding a web API
+If you wanted to offer a script HTTP **GET:/api/foo/bar**  
 
-.PARAMETER MESSAGE2
-	Message 2 description
-If you wanted to offer a script HTTP GET:/foo/bar, POST:/foo/baz
-
-First, add a WebApi element with the name __foo__
-
+First, add a WebApi element with the name **foo** then configure the following values then configure the following values .
 ```xml
     <Apis>
         ...
 		<WebApi Name="foo">
 ```
+The first part of URI **/api** is static.
+The second part of URI is the `Name` of WebApi. eg: **foo**
+If you want to use PowerSHell module, add property `Module`
 
-Then for your script, bar.ps1, by convention each script should pipe the return object through [ConvertTo-Json](https://technet.microsoft.com/en-us/library/hh849922.aspx), this is because PowerShell's dynamic objects can contain circular references and cause JSON convertors to crash.
-
-Take your named parameters, for example `$message` and do something with them, in this example
+WebApi Properties :
+* `Name`: The name of WebApi and the second part of URI. eg /api/**foo**/bar
+* `Module`: Name or path of module will be loaded before launch command
 
 
 ```powershell
@@ -171,8 +176,8 @@ Take your named parameters, for example `$message` and do something with them, i
     This script content differents types arguments with attributes validator.
 .NOTES
     Additional Notes, eg
-    File Name  : Example.ps1
-    Author     : Sébastien Pichon - sebastien.pichon@adeo.com
+    File Name  : bar.ps1
+    Author     : John Doe - xxx@xxx.com
 .LINK
     A hyper link, eg
 .PARAMETER MESSAGE1
@@ -183,15 +188,15 @@ Take your named parameters, for example `$message` and do something with them, i
 	Message  description
 #>
 param ( 
-	#Message 1 ok?
 	[string]$Message1 = "def1",
 	[string]$Message2 = "def2",
 	[string]$Message3 = "def3",
 	[string]$Message4 = "def4"
-	)
+)
 
 #Sleep -s 10
 
+# Return object
 @{
 	forlder = Get-Item -Path . | Select-Object name;
 	path = $PWD.path;
@@ -205,24 +210,35 @@ param (
 
 Now, add the method to the configuration file by adding an `WebMethod` Element
 
-* `Name` The name of the method, which matches the URL pattern /{WebApi:Name}/{WebMethod:Name}?params
+* `Name` The name of the method, which matches the URL pattern /{WebApi:Name}/{WebMethod:Name}?params. The name must be started by  HTTP verb separated by -. eg: Get-bar
 * `AsJob` Whether to run the script synchronously (__false__) or async (__true__)
-* `PowerShellPath` The script path relative to the ScriptRepository directory.
+* `PowerShellPath` The script path relative to the ScriptRepository directory. 
+* `Command` The cmdlet name if you use PowerShell module, 
+* `Roles` The list of roles needed for execution
+* `ParameterForUserName` If you want to transfer the caller's username to the PowerShell script, set the name of Powershell parameter.
+* `ParameterForUserRoles` If you want to transfer the caller's roles to the PowerShell script, set the name of Powershell parameter.
+* `ParameterForUserClaims` If you want to transfer the caller's claims to the PowerShell script, set the name of Powershell parameter.
 
-Then, add a `Parameter` Element to the `Parameters` collection for each parameter, either POST or GET.
+If you want custimze the paramter, add a `Parameter` Element to the `Parameters` collection for each parameter 
 
 ```xml
     <Apis>
         ...
 		<WebApi Name="foo">
             <WebMethods>
-                <WebMethod Name="bar" AsJob="false" PowerShellPath="bar.ps1">
-                    <Parameters>
-                        <Parameter Name="message" Type="string" />
-                    </Parameters>
-                </WebMethod>
+                <WebMethod Name="Get-bar" AsJob="false" PowerShellPath="bar.ps1">
+		            <Parameters>
+		              <Parameter Name="Message1" Location="Query" />
+		            </Parameters>  
+				</WebMethod>
             </WebMethods>
 ```
+Parameter properties
+`Name` Name of PowerShell parameter
+`Location` Parameter's location. Must be HTTP Location QUERY, PATH, BODY, HEADER or ConfigFile. Default: QUERY for GET else BODY. 
+`Hidden` **true** if you want hide the paramter in specification OpenApi file. Default: false
+`Value` Value of parameter if you set the Location to ConfigFile. Hidden  is automatically true 
+`IsRequired` Set parameter as Mandatory if not set in PowerShell script
 
 ### Testing your script
 
@@ -245,7 +261,9 @@ returns
 }
 ```
 
-## Authentication
+## Authentication 
+
+### Authenticatin with JWT
 
 By default, authentication is __disabled__ for testing purposes. The primary authentication option is JSON Web-Token (JWT)
 
@@ -259,7 +277,42 @@ You can re-enable it by setting Enabled to __"true"__ then configure the followi
 ```xml
 <Authentication Enabled="false" StoreName="My" StoreLocation="LocalMachine" Thumbprint="E6B6364C75ED8B6495A42D543AC728B4C2263082" Audience="http://dimensiondata.com/auth/connectors" />
 ```
+### Authentication with ApiKey
 
+By default, authentication is __disabled__ for testing purposes. 
+You can re-enable it by setting Enabled to __"true"__ to enable ApiKey auth.
+
+By default, it expects a header in the following format:
+```
+Authentication: ApiKey {key}
+```
+
+The format of the expected header containing the API key is completely customisable. 
+
+* `Header` - The name of the HTTP header field. Default : Authentication
+* `HeaderKey` - Prefix of the value. Default : ApiKey
+
+Example : 
+
+To use `X-API-KEY` as the field name without prefix for value, configure the following values: 
+```xml
+<ApiKeyAuthentication Enabled="true" Header="X-API-KEY" HeaderKey="" />
+```
+Now, add the user to the configuration file by adding an `User` Element in `Users` section
+
+* `ApiKey` String representing the ApiKey *(if you don' have idea, generate new GUID in PowerShell with [guid]::NewGuid())* 
+* `Name` The user name 
+* `Roles` List of user roles (separated by comma)
+* `IpAddresses` List of IP Addresses (separated by comma) where the call can be made.
+
+#### Adding ApiKey
+
+```xml
+<Users>
+   <User Name="SeB" ApiKey="123" IpAddresses="10.1.53.10,10.1.52.10" Roles="admins" />
+   <User Name="SeB2" ApiKey="0bdb7446-0087-4979-b82c-e6c827822eba" IpAddresses="" Roles="admins,OSInstallRW" />
+</Users>
+```
 ### Adding another authentication option
 
 If you want to use another authentication option, you can leverage OWIN middleware to plug and play OAuth, certificates or any of the other supported auth methods.
@@ -318,6 +371,6 @@ Also, it will log the error in a `Logs` folder underneath the host directory.
 </CrashLogEntry>
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTExNjg1NzkyOTcsLTEyMzc1MTk0NTddfQ
-==
+eyJoaXN0b3J5IjpbLTI0NTY4MDMwMiwtMTE2ODU3OTI5NywtMT
+IzNzUxOTQ1N119
 -->
