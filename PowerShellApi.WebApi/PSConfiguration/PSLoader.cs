@@ -42,6 +42,7 @@ namespace PowerShellRestApi.PSConfiguration
 
         Uri _parentUri { get; set; }
 
+        string _apiName { get; set; } = "";
         /// <summary>
         /// Initialize PSHelpInfo class
         /// </summary>
@@ -49,7 +50,7 @@ namespace PowerShellRestApi.PSConfiguration
         /// <param name="cmdHelp">Result of Get-Help cmdlet. Use InvokePS() to build object</param>
         /// <param name="initialWebMethod">WebMethod instance built from configuration file</param>
         /// <param name="module">Module that must be loaded before running the command</param>
-        public PSLoader(CommandInfo cmdInfo, PSObject cmdHelp, WebMethod initialWebMethod, string module, Uri parentUri)
+        public PSLoader(string apiName, CommandInfo cmdInfo, PSObject cmdHelp, WebMethod initialWebMethod, string module, Uri parentUri)
         {
             _cmdConfig = initialWebMethod;
 
@@ -60,6 +61,8 @@ namespace PowerShellRestApi.PSConfiguration
             _module = module;
 
             _parentUri = parentUri;
+
+            _apiName = apiName;
         }
 
         /// <summary>
@@ -92,7 +95,7 @@ namespace PowerShellRestApi.PSConfiguration
                 Synopsis = _cmdHelp.Synopsis ?? "",
                 Description = _cmdHelp.description == null ? "" : _cmdHelp.description[0].Text,
                 OutTypeName = _cmdInfo.OutputType.Select(x => x.Name.ToString()).ToArray(),
-
+                
                 /*
                 RestMethod = _cmdConfig.RestMethod != null
                              ? (RestMethod)_cmdConfig.RestMethod
@@ -103,7 +106,8 @@ namespace PowerShellRestApi.PSConfiguration
                 RestMethod = _cmdConfig.RestMethod,
                 Roles = _cmdConfig.Roles,
                 Users = _cmdConfig.Users,
-                AllowAnonymous = _cmdConfig.AllowAnonymous
+                AllowAnonymous = _cmdConfig.AllowAnonymous,
+                ApiName = _apiName
             };
 
             // Not Available cmdInfo.Notes
@@ -191,6 +195,7 @@ namespace PowerShellRestApi.PSConfiguration
                 {
                     psParam.Location = RestLocation.ConfigFile;
                     psParam.Value = paramConfig.Value;
+                    psParam.Hidden = true;
                 }
                 else
                 {
@@ -232,7 +237,7 @@ namespace PowerShellRestApi.PSConfiguration
         /// <param name="module">Module that must be loaded before running the command</param>
         /// <param name="webMethods">List of WebMethod instance built from configuration file</param>
         /// <returns></returns>
-        public static List<PSLoader> InvokePS(string module, IEnumerable<WebMethod> webMethods, Uri BaseUri)
+        public static List<PSLoader> InvokePS(string apiName, string module, IEnumerable<WebMethod> webMethods, Uri BaseUri)
         {
 
             var returnValues = new List<PSLoader>();
@@ -324,7 +329,7 @@ namespace PowerShellRestApi.PSConfiguration
                         }
 
                         if (psCmdInfo != null && psCmdHelp != null)
-                            returnValues.Add(new PSLoader(psCmdInfo, psCmdHelp, webMethod, module, BaseUri));
+                            returnValues.Add(new PSLoader(apiName, psCmdInfo, psCmdHelp, webMethod, module, BaseUri));
                     }
                 }
 
@@ -385,7 +390,7 @@ namespace PowerShellRestApi.PSConfiguration
 
                 if (isModuleMode)
                 {
-                    PSLoader.InvokePS(api.Module, api.WebMethods, BaseUri)
+                    PSLoader.InvokePS(api.Name, api.Module, api.WebMethods, BaseUri)
                             .ForEach(x => Routes.Add(x.GetPSCommand()));
                 }
                 else
@@ -394,7 +399,7 @@ namespace PowerShellRestApi.PSConfiguration
 
                     foreach (WebMethod webMethod in api.WebMethods)
                     {
-                        PSLoader.InvokePS(webMethod.Module, new[] { webMethod }, BaseUri)
+                        PSLoader.InvokePS(api.Name, webMethod.Module, new[] { webMethod }, BaseUri)
                                 .ForEach(x => Routes.Add(x.GetPSCommand()));
                     }
                 }

@@ -85,9 +85,9 @@ namespace PowerShellRestApi.PSConfiguration
         /// <summary>
         /// Gets all parameters for specific location.
         /// </summary>
-        public List<PSParameter> GetParametersByLocation(RestLocation location)
+        public List<PSParameter> GetParametersByLocation(RestLocation location, bool includeHidden = false)
         {
-            return Parameters.Where(x => x.Location == location && !x.Hidden)
+            return Parameters.Where(x => x.Location == location && (includeHidden || !x.Hidden))
                              .OrderBy(x => x.Position)
                              .ToList();
         }
@@ -95,9 +95,9 @@ namespace PowerShellRestApi.PSConfiguration
         /// <summary>
         /// Gets all parameters execpt for specific location.
         /// </summary>
-        public List<PSParameter> GetParametersExceptForLocation(RestLocation location)
+        public List<PSParameter> GetParametersExceptForLocation(RestLocation location, bool includeHidden = false)
         {
-            return Parameters.Where(x => x.Location != location && !x.Hidden)
+            return Parameters.Where(x => x.Location != location && (includeHidden || !x.Hidden))
                              .OrderBy(x => x.Position)
                              .ToList();
         }

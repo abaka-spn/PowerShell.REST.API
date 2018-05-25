@@ -310,7 +310,7 @@ namespace PowerShellRestApi.WebApi.Controllers
             #endregion
 
             #region ----- ConfigFile parameters -----
-            foreach (var param in psCommand.GetParametersByLocation(RestLocation.ConfigFile))
+            foreach (var param in psCommand.GetParametersByLocation(RestLocation.ConfigFile,true))
             {
                     inParams.Add(new KeyValuePair<string, object>(param.Name, param.Value));
             }

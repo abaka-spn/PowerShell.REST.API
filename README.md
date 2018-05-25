@@ -160,7 +160,7 @@ The first part of URI **/api** is static.
 The second part of URI is the `Name` of WebApi. eg: **foo**
 If you want to use PowerSHell module, add property `Module`
 
-WebApi Properties :
+#### WebApi elements
 * `Name`: The name of WebApi and the second part of URI. eg /api/**foo**/bar
 * `Module`: Name or path of module will be loaded before launch command
 
@@ -205,6 +205,7 @@ param (
 
 ```
 
+#### WebMethod element
 Now, add the method to the configuration file by adding an `WebMethod` Element
 
 * `Name` The name of the method, which matches the URL pattern /{WebApi:Name}/{WebMethod:Name}?params. The name must be started by  HTTP verb separated by -. eg: Get-bar
@@ -230,12 +231,13 @@ If you want custimze the paramter, add a `Parameter` Element to the `Parameters`
 				</WebMethod>
             </WebMethods>
 ```
-Parameter properties
-`Name` Name of PowerShell parameter
-`Location` Parameter's location. Must be HTTP Location QUERY, PATH, BODY, HEADER or ConfigFile. Default: QUERY for GET else BODY. 
-`Hidden` **true** if you want hide the paramter in specification OpenApi file. Default: false
-`Value` Value of parameter if you set the Location to ConfigFile. Hidden  is automatically true 
-`IsRequired` Set parameter as Mandatory if not set in PowerShell script
+
+#### Parameter elements
+* `Name` Name of PowerShell parameter
+* `Location` Parameter's location. Must be HTTP Location QUERY, PATH, BODY, HEADER or ConfigFile. Default: QUERY for GET else BODY. 
+* `Hidden` **true** if you want hide the paramter in specification OpenApi file. Default: false
+* `Value` Value of parameter (if you set it, `Location` is forced to ConfigFile and `Hidden` to true) 
+* `IsRequired` Set parameter as Mandatory (if it's defined in PowerShell script, you dont have to define it here)
 
 ### Testing your script
 
@@ -331,10 +333,30 @@ In DynamicPowerShellApi.Owin/Startup.cs replace the existing auth configuration 
 
 ## Error Handling
 
-By default, any terminal errors in your powershell script will cause the HTTP response code to be HTTP500,
+4 error categories are trapped in your Powershell script
+* `PermissionDenied`: cause the HTTP response code to be 403 (Forbidden)
+* `ObjectNotFound`: cause the HTTP response code to be 404 (NotFound)
+* `InvalidArgument`: cause the HTTP response code to be 400 (BadRequest)
+* `ResourceExists`: cause the HTTP response code to be 409 (Conflict)
+
+Any other errors cause the HTTP response code to be 500 (InternalServerError)
+
+Add Write-Error command in your powershell script with the appropriate category
+```powershell
+Write-Error "Group does not exist." -Category ObjectNotFound
+```
 
 You will get the following response from the API
 
+For error 400, 403, 404, 409
+```json
+{
+  "Message": "Group does not exist.",
+}
+```
+
+
+For error 500
 ```json
 {
   "Message": "Error reading JObject from JsonReader. Current JsonReader item is not an object: String. Path '', line 1, position 5.",
